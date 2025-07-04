@@ -1,0 +1,30 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo base para auditoria (heredable)
+model EntidadBase {
+  id                  Int       @id @default(autoincrement())
+  fechaCreacion       DateTime  @default(now()) @map("_fecha_creacion")
+  fechaModificacion   DateTime  @updatedAt @map("_fecha_modificacion")
+  fechaEliminacion    DateTime? @map("_fecha_eliminacion")
+  usuarioCreacion     String?   @map("_usuario_creacion")
+  usuarioModificacion String?   @map("_usuario_modificacion")
+  usuarioEliminacion  String?   @map("_usuario_eliminacion")
+  estado              String    @default("activo") @map("_estado")
+
+  @@map("entidad_base")
+  @@ignore // No crea la tabla, solo herencia 
+}
