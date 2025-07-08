@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfiguracionService } from './configuracion.service';
+import { PrismaService } from '../../database/services/prisma.service';
 import {
   EstadoSistema,
   RespuestaValidacion,
@@ -9,11 +10,14 @@ import {
 export class ValidacionService {
   private readonly logger = new Logger(ValidacionService.name);
 
-  constructor(private configuracionService: ConfiguracionService) {}
+  constructor(
+    private configuracionService: ConfiguracionService,
+    private prisma: PrismaService,
+  ) {}
 
-  verificarSaludSistema(): EstadoSistema {
+  async verificarSaludSistema(): Promise<EstadoSistema> {
     const servicios = {
-      baseDatos: this.verificarBaseDatos(),
+      baseDatos: await this.verificarBaseDatos(),
       redis: this.verificarRedis(),
       email: this.verificarEmail(),
     };
@@ -28,20 +32,17 @@ export class ValidacionService {
     };
   }
 
-  private verificarBaseDatos(): 'conectado' | 'desconectado' {
+  private async verificarBaseDatos(): Promise<'conectado' | 'desconectado'> {
     try {
-      // TODO: Implementar verificación real cuando tengamos PrismaService
-      // Por ahora simulamos la verificación
       const config = this.configuracionService.baseDatos;
 
       if (!config.url) {
         return 'desconectado';
       }
 
-      // Aquí iría la verificación real con Prisma
-      // await this.prisma.$queryRaw`SELECT 1`;
-
-      return 'conectado';
+      // Verificación real usando PrismaService
+      const conectado = await this.prisma.verificarConexion();
+      return conectado ? 'conectado' : 'desconectado';
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Error desconocido';
@@ -188,7 +189,7 @@ export class ValidacionService {
     }
   }
 
-  verificarConectividad(): { [servicio: string]: boolean } {
+  async verificarConectividad(): Promise<{ [servicio: string]: boolean }> {
     const resultados = {
       baseDatos: false,
       redis: false,
@@ -197,7 +198,7 @@ export class ValidacionService {
 
     try {
       // Verificar cada servicio
-      resultados.baseDatos = this.verificarBaseDatos() === 'conectado';
+      resultados.baseDatos = (await this.verificarBaseDatos()) === 'conectado';
       resultados.redis = this.verificarRedis() === 'conectado';
       resultados.email = this.verificarEmail() === 'operativo';
     } catch (error) {

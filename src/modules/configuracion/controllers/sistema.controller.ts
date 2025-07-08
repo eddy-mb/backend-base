@@ -14,6 +14,7 @@ import {
   RespuestaValidacion,
 } from '../interfaces/configuracion.interface';
 import { format } from 'date-fns-tz';
+
 @ApiTags('Sistema')
 @Controller('sistema')
 export class SistemaController {
@@ -61,8 +62,8 @@ export class SistemaController {
       },
     },
   })
-  verificarSalud(): RespuestaSalud {
-    const estado = this.validacionService.verificarSaludSistema();
+  async verificarSalud(): Promise<RespuestaSalud> {
+    const estado = await this.validacionService.verificarSaludSistema();
 
     return {
       exito: true,
@@ -200,8 +201,8 @@ export class SistemaController {
     status: 403,
     description: 'Acceso denegado - se requieren permisos de administrador',
   })
-  verificarConectividad() {
-    const conectividad = this.validacionService.verificarConectividad();
+  async verificarConectividad() {
+    const conectividad = await this.validacionService.verificarConectividad();
 
     return {
       exito: true,
