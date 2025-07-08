@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   ConfiguracionSistema,
@@ -14,13 +14,12 @@ import {
 } from '../interfaces/configuracion.interface';
 
 @Injectable()
-export class ConfiguracionService implements OnModuleInit {
+export class ConfiguracionService {
   private readonly logger = new Logger(ConfiguracionService.name);
   private configuracion!: ConfiguracionSistema;
 
-  constructor(private configService: ConfigService) {}
-
-  onModuleInit(): void {
+  constructor(private configService: ConfigService) {
+    // Cargar y validar configuración inmediatamente en el constructor
     this.cargarYValidarConfiguracion();
   }
 

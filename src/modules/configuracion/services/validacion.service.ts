@@ -6,19 +6,32 @@ import {
   RespuestaValidacion,
 } from '../interfaces/configuracion.interface';
 
+// Interface para evitar dependencia circular pero mantener tipado
+interface IRedisHealthService {
+  ping(): Promise<boolean>;
+}
+
 @Injectable()
 export class ValidacionService {
   private readonly logger = new Logger(ValidacionService.name);
+  private redisHealthService?: IRedisHealthService;
 
   constructor(
     private configuracionService: ConfiguracionService,
     private prisma: PrismaService,
   ) {}
 
+  /**
+   * Inyectar RedisHealthService dinámicamente para evitar dependencia circular
+   */
+  setRedisHealthService(redisHealthService: IRedisHealthService): void {
+    this.redisHealthService = redisHealthService;
+  }
+
   async verificarSaludSistema(): Promise<EstadoSistema> {
     const servicios = {
       baseDatos: await this.verificarBaseDatos(),
-      redis: this.verificarRedis(),
+      redis: await this.verificarRedis(),
       email: this.verificarEmail(),
     };
 
@@ -51,7 +64,7 @@ export class ValidacionService {
     }
   }
 
-  private verificarRedis(): 'conectado' | 'desconectado' {
+  private async verificarRedis(): Promise<'conectado' | 'desconectado'> {
     try {
       const config = this.configuracionService.redis;
 
@@ -59,10 +72,22 @@ export class ValidacionService {
         return 'desconectado';
       }
 
-      // TODO: Implementar verificación real cuando tengamos Redis client
-      // Por ahora simulamos la verificación
+      // Verificación real usando RedisHealthService si está disponible
+      if (this.redisHealthService) {
+        try {
+          const conectado = await this.redisHealthService.ping();
+          return conectado ? 'conectado' : 'desconectado';
+        } catch (error) {
+          this.logger.error('Error en RedisHealthService:', error);
+          return 'desconectado';
+        }
+      }
 
-      return 'conectado';
+      // Fallback: verificar solo configuración si RedisHealthService no está disponible
+      this.logger.debug(
+        'RedisHealthService no disponible, verificando solo configuración',
+      );
+      return 'conectado'; // Asumimos conectado si la configuración existe
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Error desconocido';
@@ -199,7 +224,7 @@ export class ValidacionService {
     try {
       // Verificar cada servicio
       resultados.baseDatos = (await this.verificarBaseDatos()) === 'conectado';
-      resultados.redis = this.verificarRedis() === 'conectado';
+      resultados.redis = (await this.verificarRedis()) === 'conectado';
       resultados.email = this.verificarEmail() === 'operativo';
     } catch (error) {
       const errorMessage =
