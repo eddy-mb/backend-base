@@ -15,11 +15,13 @@ export class PrismaService
   private readonly logger = new Logger(PrismaService.name);
 
   constructor(private configuracionService: ConfiguracionService) {
-    // Usar directamente la variable de entorno para evitar el problema de timing
+    // Ahora podemos usar ConfiguracionService porque se inicializa en el constructor
+    const dbConfig = configuracionService.baseDatos;
+
     super({
       datasources: {
         db: {
-          url: process.env.DATABASE_URL,
+          url: dbConfig.url,
         },
       },
       log: ['error', 'warn'],
