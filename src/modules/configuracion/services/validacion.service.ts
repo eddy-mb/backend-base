@@ -3,7 +3,8 @@ import { ConfiguracionService } from './configuracion.service';
 import { PrismaService } from '../../database/services/prisma.service';
 import {
   EstadoSistema,
-  RespuestaValidacion,
+  ValidacionConfiguracion,
+  DatosConectividad,
 } from '../interfaces/configuracion.interface';
 
 // Interface para evitar dependencia circular pero mantener tipado
@@ -117,7 +118,7 @@ export class ValidacionService {
     }
   }
 
-  validarConfiguracionCompleta(): RespuestaValidacion {
+  validarConfiguracionCompleta(): ValidacionConfiguracion {
     const errores: string[] = [];
     const advertencias: string[] = [];
 
@@ -192,29 +193,23 @@ export class ValidacionService {
       }
 
       return {
-        exito: true,
-        datos: {
-          valida,
-          errores,
-          advertencias,
-        },
+        valida,
+        errores,
+        advertencias,
       };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Error desconocido';
       this.logger.error('Error durante validación:', errorMessage);
       return {
-        exito: false,
-        datos: {
-          valida: false,
-          errores: [`Error interno: ${errorMessage}`],
-          advertencias,
-        },
+        valida: false,
+        errores: [`Error interno: ${errorMessage}`],
+        advertencias,
       };
     }
   }
 
-  async verificarConectividad(): Promise<{ [servicio: string]: boolean }> {
+  async verificarConectividad(): Promise<DatosConectividad> {
     const resultados = {
       baseDatos: false,
       redis: false,

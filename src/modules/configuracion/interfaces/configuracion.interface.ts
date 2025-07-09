@@ -1,5 +1,6 @@
 /**
  * Interfaces para el módulo de configuración del sistema
+ * Actualizadas para trabajar con ResponseModule (formato { data: ... })
  */
 
 export interface ConfiguracionBaseDatos {
@@ -69,46 +70,61 @@ export interface EstadoSistema {
   };
 }
 
-export interface RespuestaSalud {
-  exito: boolean;
-  datos: {
-    sistema: 'operativo' | 'degradado' | 'inoperativo';
+// Interfaces de datos para endpoints (ResponseModule agrega wrapper { data: ... } automáticamente)
+export interface DatosSaludSistema {
+  sistema: 'operativo' | 'degradado' | 'inoperativo';
+  version: string;
+  ambiente: string;
+  timestamp: string;
+  servicios: {
+    baseDatos: 'conectado' | 'desconectado';
+    redis: 'conectado' | 'desconectado';
+    email: 'operativo' | 'inoperativo';
+  };
+}
+
+export interface ConfiguracionPublica {
+  aplicacion: {
+    nombre: string;
     version: string;
     ambiente: string;
-    timestamp: string;
-    servicios: {
-      baseDatos: 'conectado' | 'desconectado';
-      redis: 'conectado' | 'desconectado';
-      email: 'operativo' | 'inoperativo';
-    };
+  };
+  caracteristicas: {
+    email: boolean;
+    storage: 'local' | 's3';
+    redis: boolean;
+  };
+  limites: {
+    rateLimitMax: number;
+    rateLimitWindow: number;
+  };
+  baseDatos: {
+    host: string;
+    port: number;
+    database: string;
+    ssl: boolean;
+  };
+  redis: {
+    host: string;
+    port: number;
   };
 }
 
-export interface RespuestaConfiguracion {
-  exito: boolean;
-  datos: {
-    aplicacion: {
-      nombre: string;
-      version: string;
-      ambiente: string;
-    };
-    caracteristicas: {
-      email: boolean;
-      storage: 'local' | 's3';
-      redis: boolean;
-    };
-    limites: {
-      rateLimitMax: number;
-      rateLimitWindow: number;
-    };
-  };
+export interface ValidacionConfiguracion {
+  valida: boolean;
+  errores: string[];
+  advertencias: string[];
 }
 
-export interface RespuestaValidacion {
-  exito: boolean;
-  datos: {
-    valida: boolean;
-    errores: string[];
-    advertencias: string[];
-  };
+export interface DatosConectividad {
+  baseDatos: boolean;
+  redis: boolean;
+  email: boolean;
+}
+
+export interface DatosInfoSistema {
+  nombre: string;
+  version: string;
+  ambiente: string;
+  timestamp: string;
 }

@@ -8,11 +8,7 @@ import {
 import { ConfiguracionService } from '../services/configuracion.service';
 import { ValidacionService } from '../services/validacion.service';
 import { ConfiguracionGuard } from '../guards/configuracion.guard';
-import {
-  RespuestaSalud,
-  RespuestaConfiguracion,
-  RespuestaValidacion,
-} from '../interfaces/configuracion.interface';
+import { BusinessException } from '../../respuestas';
 import { format } from 'date-fns-tz';
 
 @ApiTags('Sistema')
@@ -35,8 +31,7 @@ export class SistemaController {
     schema: {
       type: 'object',
       properties: {
-        exito: { type: 'boolean' },
-        datos: {
+        data: {
           type: 'object',
           properties: {
             sistema: {
@@ -62,20 +57,18 @@ export class SistemaController {
       },
     },
   })
-  async verificarSalud(): Promise<RespuestaSalud> {
+  async verificarSalud() {
     const estado = await this.validacionService.verificarSaludSistema();
 
+    // Retornar datos directamente - el interceptor agregará { data: ... }
     return {
-      exito: true,
-      datos: {
-        sistema: estado.sistemaOperativo ? 'operativo' : 'degradado',
-        version: this.configuracionService.aplicacion.version,
-        ambiente: this.configuracionService.aplicacion.ambiente,
-        timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss', {
-          timeZone: this.configuracionService.aplicacion.timeZone,
-        }),
-        servicios: estado.servicios,
-      },
+      sistema: estado.sistemaOperativo ? 'operativo' : 'degradado',
+      version: this.configuracionService.aplicacion.version,
+      ambiente: this.configuracionService.aplicacion.ambiente,
+      timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss', {
+        timeZone: this.configuracionService.aplicacion.timeZone,
+      }),
+      servicios: estado.servicios,
     };
   }
 
@@ -93,8 +86,7 @@ export class SistemaController {
     schema: {
       type: 'object',
       properties: {
-        exito: { type: 'boolean' },
-        datos: {
+        data: {
           type: 'object',
           properties: {
             aplicacion: {
@@ -129,11 +121,9 @@ export class SistemaController {
     status: 403,
     description: 'Acceso denegado - se requieren permisos de administrador',
   })
-  obtenerConfiguracion(): RespuestaConfiguracion {
-    return {
-      exito: true,
-      datos: this.configuracionService.obtenerConfiguracionPublica(),
-    };
+  obtenerConfiguracion() {
+    // Retornar datos directamente - el interceptor agregará { data: ... }
+    return this.configuracionService.obtenerConfiguracionPublica();
   }
 
   @Post('validar-configuracion')
@@ -150,8 +140,7 @@ export class SistemaController {
     schema: {
       type: 'object',
       properties: {
-        exito: { type: 'boolean' },
-        datos: {
+        data: {
           type: 'object',
           properties: {
             valida: { type: 'boolean' },
@@ -166,8 +155,18 @@ export class SistemaController {
     status: 403,
     description: 'Acceso denegado - se requieren permisos de administrador',
   })
-  validarConfiguracion(): RespuestaValidacion {
+  validarConfiguracion() {
     const resultado = this.validacionService.validarConfiguracionCompleta();
+
+    if (!resultado.valida && resultado.errores.length > 0) {
+      throw BusinessException.businessRuleViolation(
+        'CONFIGURACION_INVALIDA',
+        'La configuración del sistema contiene errores',
+        { errores: resultado.errores, advertencias: resultado.advertencias },
+      );
+    }
+
+    // Retornar datos directamente - el interceptor agregará { data: ... }
     return resultado;
   }
 
@@ -185,8 +184,7 @@ export class SistemaController {
     schema: {
       type: 'object',
       properties: {
-        exito: { type: 'boolean' },
-        datos: {
+        data: {
           type: 'object',
           properties: {
             baseDatos: { type: 'boolean' },
@@ -204,10 +202,8 @@ export class SistemaController {
   async verificarConectividad() {
     const conectividad = await this.validacionService.verificarConectividad();
 
-    return {
-      exito: true,
-      datos: conectividad,
-    };
+    // Retornar datos directamente - el interceptor agregará { data: ... }
+    return conectividad;
   }
 
   @Get('info')
@@ -221,8 +217,7 @@ export class SistemaController {
     schema: {
       type: 'object',
       properties: {
-        exito: { type: 'boolean' },
-        datos: {
+        data: {
           type: 'object',
           properties: {
             nombre: { type: 'string' },
@@ -235,16 +230,14 @@ export class SistemaController {
     },
   })
   obtenerInfo() {
+    // Retornar datos directamente - el interceptor agregará { data: ... }
     return {
-      exito: true,
-      datos: {
-        nombre: this.configuracionService.aplicacion.nombre,
-        version: this.configuracionService.aplicacion.version,
-        ambiente: this.configuracionService.aplicacion.ambiente,
-        timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss', {
-          timeZone: this.configuracionService.aplicacion.timeZone,
-        }),
-      },
+      nombre: this.configuracionService.aplicacion.nombre,
+      version: this.configuracionService.aplicacion.version,
+      ambiente: this.configuracionService.aplicacion.ambiente,
+      timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss', {
+        timeZone: this.configuracionService.aplicacion.timeZone,
+      }),
     };
   }
 }
