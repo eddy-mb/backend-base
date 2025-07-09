@@ -11,6 +11,7 @@ import {
   ConfiguracionBaseDatos,
   ConfiguracionAplicacion,
   ConfiguracionSeguridad,
+  ConfiguracionPublica,
 } from '../interfaces/configuracion.interface';
 
 @Injectable()
@@ -227,8 +228,8 @@ export class ConfiguracionService {
     }
   }
 
-  // Obtener configuración completa (sin datos sensibles)
-  obtenerConfiguracionPublica() {
+  // Obtener configuración completa (sin datos sensibles) - retorna datos directos
+  obtenerConfiguracionPublica(): ConfiguracionPublica {
     return {
       aplicacion: {
         nombre: this.aplicacion.nombre,
