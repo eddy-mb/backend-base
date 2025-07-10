@@ -11,6 +11,7 @@ import {
   ConfiguracionBaseDatos,
   ConfiguracionAplicacion,
   ConfiguracionSeguridad,
+  ConfiguracionLogging,
   ConfiguracionPublica,
 } from '../interfaces/configuracion.interface';
 
@@ -101,6 +102,35 @@ export class ConfiguracionService {
         ),
         AWS_REGION: this.configService.get<string>('AWS_REGION'),
         AWS_S3_BUCKET: this.configService.get<string>('AWS_S3_BUCKET'),
+
+        // Winston/Logging - variables nuevas
+        WINSTON_MAX_FILES: this.configService.get<string>(
+          'WINSTON_MAX_FILES',
+          '14d',
+        ),
+        WINSTON_MAX_SIZE: this.configService.get<string>(
+          'WINSTON_MAX_SIZE',
+          '20m',
+        ),
+        WINSTON_LOG_DIR: this.configService.get<string>(
+          'WINSTON_LOG_DIR',
+          './logs',
+        ),
+        WINSTON_CONSOLE_ENABLED: this.configService.get<string>(
+          'WINSTON_CONSOLE_ENABLED',
+          'true',
+        ),
+        WINSTON_FILE_ENABLED: this.configService.get<string>(
+          'WINSTON_FILE_ENABLED',
+        ),
+        WINSTON_DATE_PATTERN: this.configService.get<string>(
+          'WINSTON_DATE_PATTERN',
+          'YYYY-MM-DD',
+        ),
+        WINSTON_ERROR_FILE_ENABLED: this.configService.get<string>(
+          'WINSTON_ERROR_FILE_ENABLED',
+          'true',
+        ),
       };
 
       // Validar con Zod
@@ -203,6 +233,22 @@ export class ConfiguracionService {
       awsSecretAccessKey: this.configuracion.AWS_SECRET_ACCESS_KEY,
       awsRegion: this.configuracion.AWS_REGION,
       awsS3Bucket: this.configuracion.AWS_S3_BUCKET,
+    };
+  }
+
+  get logging(): ConfiguracionLogging {
+    return {
+      level: this.configuracion.LOG_LEVEL,
+      maxFiles: this.configuracion.WINSTON_MAX_FILES,
+      maxSize: this.configuracion.WINSTON_MAX_SIZE,
+      logDirectory: this.configuracion.WINSTON_LOG_DIR,
+      enableConsoleLogging: this.configuracion.WINSTON_CONSOLE_ENABLED,
+      enableFileLogging:
+        this.configuracion.WINSTON_FILE_ENABLED ??
+        this.configuracion.NODE_ENV !== 'development', // Lógica automática
+      datePattern: this.configuracion.WINSTON_DATE_PATTERN,
+      enableErrorFile: this.configuracion.WINSTON_ERROR_FILE_ENABLED,
+      format: this.configuracion.NODE_ENV === 'production' ? 'json' : 'simple',
     };
   }
 
