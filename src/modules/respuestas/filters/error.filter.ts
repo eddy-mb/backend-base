@@ -21,6 +21,7 @@ import {
   ResourceCodes,
   BusinessCodes,
 } from '../constants/error-codes';
+import { format } from 'date-fns-tz';
 
 /**
  * Filtro global que captura TODAS las excepciones
@@ -218,7 +219,9 @@ export class ErrorFilter implements ExceptionFilter {
       method: request.method,
       url: request.url,
       status,
-      timestamp: new Date().toISOString(),
+      timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss', {
+        timeZone: process.env.TZ || 'America/La_Paz',
+      }),
     };
 
     if (status >= 500) {
