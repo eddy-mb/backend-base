@@ -61,6 +61,18 @@ export interface ConfiguracionStorage {
   awsS3Bucket?: string;
 }
 
+export interface ConfiguracionLogging {
+  level: string; // Del LOG_LEVEL existente
+  maxFiles: string; // '14d', '30d', etc.
+  maxSize: string; // '20m', '100m', etc.
+  logDirectory: string; // './logs', '/var/logs', etc.
+  enableConsoleLogging: boolean; // true en desarrollo
+  enableFileLogging: boolean; // true en producción (inferido si no se especifica)
+  datePattern: string; // 'YYYY-MM-DD'
+  enableErrorFile: boolean; // true para archivo separado de errores
+  format: 'json' | 'simple'; // Inferido por ambiente
+}
+
 export interface EstadoSistema {
   sistemaOperativo: boolean;
   servicios: {

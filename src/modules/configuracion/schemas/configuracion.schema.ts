@@ -48,6 +48,26 @@ export const esquemaSeguridad = z.object({
   RATE_LIMIT_WINDOW_MS: z.number().int().min(1000).default(900000),
 });
 
+// Esquema para Winston/Logging
+export const esquemaWinston = z.object({
+  WINSTON_MAX_FILES: z.string().default('14d'),
+  WINSTON_MAX_SIZE: z.string().default('20m'),
+  WINSTON_LOG_DIR: z.string().default('./logs'),
+  WINSTON_CONSOLE_ENABLED: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('true'),
+  WINSTON_FILE_ENABLED: z
+    .string()
+    .transform((val) => val === 'true')
+    .optional(),
+  WINSTON_DATE_PATTERN: z.string().default('YYYY-MM-DD'),
+  WINSTON_ERROR_FILE_ENABLED: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('true'),
+});
+
 // Esquema para Servicios Externos
 export const esquemaServiciosExternos = z.object({
   // Email
@@ -77,6 +97,7 @@ export const esquemaConfiguracion = z.object({
   ...esquemaBaseDatos.shape,
   ...esquemaAplicacion.shape,
   ...esquemaSeguridad.shape,
+  ...esquemaWinston.shape,
   ...esquemaServiciosExternos.shape,
 });
 
@@ -84,6 +105,7 @@ export type ConfiguracionSistema = z.infer<typeof esquemaConfiguracion>;
 export type ConfiguracionBaseDatos = z.infer<typeof esquemaBaseDatos>;
 export type ConfiguracionAplicacion = z.infer<typeof esquemaAplicacion>;
 export type ConfiguracionSeguridad = z.infer<typeof esquemaSeguridad>;
+export type ConfiguracionWinston = z.infer<typeof esquemaWinston>;
 export type ConfiguracionServiciosExternos = z.infer<
   typeof esquemaServiciosExternos
 >;
