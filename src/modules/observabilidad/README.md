@@ -1,6 +1,33 @@
 # Módulo 5: Observabilidad
 
-Sistema centralizado de **logging con Winston** y **auditoría completa** para toda la aplicación en **todos los contextos**.
+Sistema **LoggerService con Winston** y **auditoría completa** para **módulos de aplicación** (6-12).
+
+## 🏗️ **Arquitectura Limpia**
+
+### **📊 Separación de Responsabilidades**
+
+```typescript
+// ✅ INFRAESTRUCTURA (Módulos 1-4): Logger nativo NestJS
+@Injectable()
+export class ConfiguracionService {
+  private readonly logger = new Logger(ConfiguracionService.name);
+  // Simple, confiable, sin dependencias circulares
+}
+
+// ✅ APLICACIÓN (Módulos 6-12): LoggerService con Winston
+@Injectable() 
+export class UsuarioService {
+  constructor(private logger: LoggerService) {}
+  // Características avanzadas: Winston + Auditoría + Formateo
+}
+```
+
+### **🎯 Justificación Arquitectónica**
+
+- **Infraestructura base**: Debe ser **bulletproof** → Logger nativo
+- **Módulos de aplicación**: Necesitan **características avanzadas** → LoggerService
+- **Sin dependencias circulares**: Arquitectura limpia y escalable
+- **Startup más rápido**: Infraestructura independiente
 
 ## 🎯 **Características Principales**
 
@@ -11,41 +38,64 @@ Sistema centralizado de **logging con Winston** y **auditoría completa** para t
 - ✅ **Auditoría manual** para casos complejos de negocio
 - ✅ **Rotación de archivos** configurada por ambiente
 - ✅ **Trazabilidad completa** de cambios en entidades críticas
-- ✅ **API compatible** con Logger de NestJS (migración transparente)
+- ✅ **Usado SOLO en módulos de aplicación** (6-12)
 
-## 🚀 **Uso Rápido**
+## 🚀 **Uso en Módulos de Aplicación (6-12)**
 
-### **Logging Centralizado**
+### **Logging Avanzado con Winston**
 
 ```typescript
-// En cualquier servicio - Inyección automática
+// ✅ Para módulos de aplicación (Usuarios, Auth, Archivos, etc.)
 @Injectable()
 export class UsuarioService {
   constructor(private logger: LoggerService) {}
 
   async crearUsuario(datos: CreateUserDto) {
+    // Logging estructurado con Winston
     this.logger.log('Creando usuario', {
       context: 'UsuarioService',
       email: datos.email,
+      origin: 'api_request'
     });
 
     try {
       const usuario = await this.prisma.usuario.create({ data: datos });
 
+      // Logging con contexto enriquecido
       this.logger.log('Usuario creado exitosamente', {
         context: 'UsuarioService',
         usuarioId: usuario.id,
+        timestamp: new Date(),
       });
 
       return usuario;
     } catch (error) {
+      // Error logging avanzado
       this.logger.logError(error, {
         context: 'UsuarioService.crearUsuario',
         email: datos.email,
+        operation: 'CREATE_USER'
       });
       throw error;
     }
   }
+}
+```
+
+### **❌ NO usar en Módulos de Infraestructura (1-4)**
+
+```typescript
+// ❌ INCORRECTO - Genera dependencias circulares
+@Injectable()
+export class ConfiguracionService {
+  constructor(private logger: LoggerService) {} // ← NO hacer esto
+}
+
+// ✅ CORRECTO - Logger nativo para infraestructura
+@Injectable()
+export class ConfiguracionService {
+  private readonly logger = new Logger(ConfiguracionService.name);
+  // Sin dependencias, arranque rápido, bulletproof
 }
 ```
 
@@ -54,7 +104,7 @@ export class UsuarioService {
 ### **🌐 1. Auditoría Automática (HTTP Requests)**
 
 ```typescript
-// En cualquier controlador - Decorador simple
+// En controladores de aplicación (Módulos 6-12)
 @Controller('usuarios')
 export class UsuarioController {
   @Post()
@@ -425,10 +475,35 @@ const SENSITIVE_FIELDS = [
 - ✅ **Manual**: Importación de facturas de proveedores
 - ✅ **Automático**: Cierre automático de períodos, cálculo de impuestos
 
+## 📈 **Arquitectura de Dependencias**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                 MÓDULOS APLICACIÓN (6-12)              │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐│
+│  │   Usuarios  │ │    Auth     │ │     Archivos        ││
+│  │             │ │             │ │                     ││
+│  └─────────────┘ └─────────────┘ └─────────────────────┘│
+│           │               │                │            │
+│           └───────────────▼────────────────┘            │
+│                   LoggerService                         │
+│                 (Winston + Auditoría)                   │
+└─────────────────────┬───────────────────────────────────┘
+                      │ NO DEPENDENCIES
+┌─────────────────────▼───────────────────────────────────┐
+│              MÓDULOS INFRAESTRUCTURA (1-4)             │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐│
+│  │Configuración│ │Base de Datos│ │      Redis          ││
+│  │(Logger)     │ │(Logger)     │ │    (Logger)         ││
+│  └─────────────┘ └─────────────┘ └─────────────────────┘│
+└─────────────────────────────────────────────────────────┘
+```
+
 ## ✅ **Criterios de Éxito**
 
+- ✅ **LoggerService SOLO para módulos 6-12** (aplicación)
 - ✅ **Winston configurado** usando configuración validada del Módulo 1
-- ✅ **API compatible** con Logger de NestJS (migración sin breaking changes)
+- ✅ **Sin dependencias circulares** en infraestructura
 - ✅ **Auditoría automática** funcionando con `@Auditable()`
 - ✅ **Auditoría manual** para procesos internos y cron jobs
 - ✅ **Sanitización** de campos sensibles automática
@@ -436,8 +511,8 @@ const SENSITIVE_FIELDS = [
 - ✅ **Formato por ambiente** (simple en dev, JSON en prod)
 - ✅ **Performance** sin impacto significativo
 - ✅ **Tabla auditoria_logs** funcionando con consultas optimizadas
-- ✅ **Trazabilidad completa** en todos los contextos
+- ✅ **Trazabilidad completa** en todos los contextos de aplicación
 
 ---
 
-**Módulo implementado para cubrir TODOS los escenarios de auditoría en sistemas empresariales complejos. ¡Listo para producción!** 🚀
+**Módulo implementado para observabilidad avanzada en módulos de aplicación. Infraestructura usa logging nativo para máxima confiabilidad.** 🚀
