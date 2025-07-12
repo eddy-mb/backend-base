@@ -46,9 +46,9 @@ export class PaginationUtils {
   }
 
   /**
-   * Configuración para Prisma ORM
+   * Configuración para TypeORM (Repository.find y QueryBuilder)
    */
-  static toPrismaConfig(params: PaginationParams) {
+  static toTypeOrmConfig(params: PaginationParams) {
     return {
       skip: params.offset,
       take: params.limit,
