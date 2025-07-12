@@ -177,21 +177,21 @@ export class UsuarioService {
     // Extraer parámetros de paginación de query string
     const paginationParams = PaginationUtils.fromQuery(queryParams);
     
-    // Configurar Prisma con offset/limit
-    const prismaConfig = PaginationUtils.toPrismaConfig(paginationParams);
+    // Configurar TypeORM con offset/limit
+    const typeormConfig = PaginationUtils.toTypeOrmConfig(paginationParams);
     
     // Consultar datos y total
     const [data, total] = await Promise.all([
-      this.prisma.usuario.findMany({
-        ...prismaConfig,
+      this.usuarioRepository.find({
+        ...typeormConfig,
         where: { /* filtros */ },
         select: { /* campos */ },
       }),
-      this.prisma.usuario.count({ where: { /* mismos filtros */ } }),
+      this.usuarioRepository.count({ where: { /* mismos filtros */ } }),
     ]);
 
     // Retornar en formato esperado por @UsePagination()
-    return PaginationUtils.createResult(data, total);
+    return { data, total };
   }
 }
 ```
@@ -201,14 +201,11 @@ export class UsuarioService {
 // Extraer parámetros de query string
 fromQuery(query: Record<string, any>): PaginationParams
 
-// Convertir a configuración Prisma
-toPrismaConfig(params: PaginationParams): { skip: number; take: number }
+// Convertir a configuración TypeORM
+toTypeOrmConfig(params: PaginationParams): { skip: number; take: number }
 
 // Calcular metadatos de paginación
 calculateMeta(total: number, params: PaginationParams): PaginationMeta
-
-// Crear resultado paginado
-createResult<T>(data: T[], total: number): PaginatedResult<T>
 ```
 
 ## 📝 Tipos TypeScript
