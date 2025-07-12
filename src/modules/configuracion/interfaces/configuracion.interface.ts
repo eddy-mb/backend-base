@@ -11,6 +11,15 @@ export interface ConfiguracionBaseDatos {
   database: string;
   ssl: boolean;
   url: string; // Para compatibilidad con DATABASE_URL
+
+  // Configuraciones de conexión TypeORM
+  autoLoadEntities: boolean;
+  retryDelay: number;
+  retryAttempts: number;
+  connectionTimeout: number;
+  idleTimeout: number;
+  maxConnections: number;
+  minConnections: number;
 }
 
 export interface ConfiguracionRedis {
