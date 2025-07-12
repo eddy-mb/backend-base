@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfiguracionService } from './configuracion.service';
-import { PrismaService } from '../../database/services/prisma.service';
+import { DataSource } from 'typeorm';
 import {
   EstadoSistema,
   ValidacionConfiguracion,
@@ -19,7 +19,7 @@ export class ValidacionService {
 
   constructor(
     private configuracionService: ConfiguracionService,
-    private prisma: PrismaService,
+    private dataSource: DataSource, // TypeORM DataSource
   ) {}
 
   /**
@@ -54,9 +54,9 @@ export class ValidacionService {
         return 'desconectado';
       }
 
-      // Verificación real usando PrismaService
-      const conectado = await this.prisma.verificarConexion();
-      return conectado ? 'conectado' : 'desconectado';
+      // Verificación real usando TypeORM DataSource
+      await this.dataSource.query('SELECT 1');
+      return 'conectado';
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Error desconocido';
