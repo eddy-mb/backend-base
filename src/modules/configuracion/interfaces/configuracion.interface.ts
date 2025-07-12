@@ -10,7 +10,7 @@ export interface ConfiguracionBaseDatos {
   password: string;
   database: string;
   ssl: boolean;
-  url: string; // Para compatibilidad con Prisma
+  url: string; // Para compatibilidad con DATABASE_URL
 }
 
 export interface ConfiguracionRedis {

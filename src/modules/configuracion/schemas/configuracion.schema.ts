@@ -10,7 +10,7 @@ export const esquemaBaseDatos = z.object({
   DB_NAME: z.string().min(1, 'Nombre de base de datos requerido'),
   DB_SSL: z.boolean().default(false),
 
-  // DATABASE_URL (para compatibilidad con Prisma)
+  // DATABASE_URL (para compatibilidad)
   DATABASE_URL: z.string().url('URL de base de datos inválida'),
 
   // Redis separado
