@@ -38,6 +38,30 @@ export class ConfiguracionService {
         DB_SSL: this.configService.get('DB_SSL', 'false') === 'true',
         DATABASE_URL: this.configService.get<string>('DATABASE_URL'),
 
+        // Configuraciones de conexión TypeORM
+        DB_AUTO_LOAD_ENTITIES: this.configService.get<string>(
+          'DB_AUTO_LOAD_ENTITIES',
+          'true',
+        ),
+        DB_RETRY_DELAY: parseInt(
+          this.configService.get('DB_RETRY_DELAY', '3000'),
+        ),
+        DB_RETRY_ATTEMPTS: parseInt(
+          this.configService.get('DB_RETRY_ATTEMPTS', '3'),
+        ),
+        DB_CONNECTION_TIMEOUT: parseInt(
+          this.configService.get('DB_CONNECTION_TIMEOUT', '60000'),
+        ),
+        DB_IDLE_TIMEOUT: parseInt(
+          this.configService.get('DB_IDLE_TIMEOUT', '600000'),
+        ),
+        DB_MAX_CONNECTIONS: parseInt(
+          this.configService.get('DB_MAX_CONNECTIONS', '20'),
+        ),
+        DB_MIN_CONNECTIONS: parseInt(
+          this.configService.get('DB_MIN_CONNECTIONS', '5'),
+        ),
+
         // Redis - variables separadas
         REDIS_HOST: this.configService.get<string>('REDIS_HOST', 'localhost'),
         REDIS_PORT: parseInt(this.configService.get('REDIS_PORT', '6379')),
@@ -175,6 +199,15 @@ export class ConfiguracionService {
       database: this.configuracion.DB_NAME,
       ssl: this.configuracion.DB_SSL,
       url: this.configuracion.DATABASE_URL,
+
+      // Configuraciones de conexión TypeORM
+      autoLoadEntities: this.configuracion.DB_AUTO_LOAD_ENTITIES,
+      retryDelay: this.configuracion.DB_RETRY_DELAY,
+      retryAttempts: this.configuracion.DB_RETRY_ATTEMPTS,
+      connectionTimeout: this.configuracion.DB_CONNECTION_TIMEOUT,
+      idleTimeout: this.configuracion.DB_IDLE_TIMEOUT,
+      maxConnections: this.configuracion.DB_MAX_CONNECTIONS,
+      minConnections: this.configuracion.DB_MIN_CONNECTIONS,
     };
   }
 

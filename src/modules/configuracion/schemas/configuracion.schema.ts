@@ -13,6 +13,18 @@ export const esquemaBaseDatos = z.object({
   // DATABASE_URL (para compatibilidad)
   DATABASE_URL: z.string().url('URL de base de datos inválida'),
 
+  // Configuraciones de conexión TypeORM
+  DB_AUTO_LOAD_ENTITIES: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('true'),
+  DB_RETRY_DELAY: z.number().int().min(1000).default(3000),
+  DB_RETRY_ATTEMPTS: z.number().int().min(1).max(10).default(3),
+  DB_CONNECTION_TIMEOUT: z.number().int().min(5000).default(60000),
+  DB_IDLE_TIMEOUT: z.number().int().min(60000).default(600000),
+  DB_MAX_CONNECTIONS: z.number().int().min(1).max(100).default(20),
+  DB_MIN_CONNECTIONS: z.number().int().min(1).max(50).default(5),
+
   // Redis separado
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.number().int().min(1).max(65535).default(6379),
