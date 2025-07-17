@@ -22,7 +22,12 @@
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/config/database.config.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/config/database.config.ts",
     "schema:sync": "typeorm-ts-node-commonjs schema:sync -d src/config/database.config.ts",
-    "seed": "tsx src/database/seeds/run-seeds.ts"
+    "seed": "tsx src/database/seeds/run-seeds.ts",
+    "logs:clean": "find ./logs -name '*.log' -mtime +30 -delete",
+    "logs:view:error": "tail -f ./logs/error-$(date +%Y-%m-%d).log",
+    "logs:view:combined": "tail -f ./logs/combined-$(date +%Y-%m-%d).log",
+    "logs:search": "grep -r",
+    "logs:stats": "wc -l ./logs/*.log"
   },
   "dependencies": {
     "@nestjs/bull": "^11.0.2",
