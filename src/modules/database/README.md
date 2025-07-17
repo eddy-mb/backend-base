@@ -1,4 +1,5 @@
 # Módulo 2: Base de Datos
+
 ## **Configuración de TypeORM para PostgreSQL**
 
 ## 📋 Descripción
@@ -42,10 +43,10 @@ NODE_ENV=development
 // app.module.ts - ORDEN IMPORTANTE
 @Module({
   imports: [
-    ConfiguracionModule,    // ← PRIMERO: Base fundamental
-    DatabaseModule,         // ← SEGUNDO: Depende de ConfiguracionModule
-    RedisModule,           // ← TERCERO: Independiente
-    ResponseModule,        // ← CUARTO: Respuestas estandarizadas
+    ConfiguracionModule, // ← PRIMERO: Base fundamental
+    DatabaseModule, // ← SEGUNDO: Depende de ConfiguracionModule
+    RedisModule, // ← TERCERO: Independiente
+    ResponseModule, // ← CUARTO: Respuestas estandarizadas
     // ... otros módulos
   ],
 })
@@ -73,28 +74,28 @@ curl http://localhost:3001/sistema/health | jq '.data.servicios.baseDatos'
 ```typescript
 export abstract class BaseEntity {
   @PrimaryGeneratedColumn()
-  id: number;                    // ID autoincremental
+  id: number; // ID autoincremental
 
   @CreateDateColumn()
-  fechaCreacion: Date;           // Timestamp de creación
+  fechaCreacion: Date; // Timestamp de creación
 
   @UpdateDateColumn()
-  fechaModificacion: Date;       // Timestamp de última modificación
+  fechaModificacion: Date; // Timestamp de última modificación
 
   @DeleteDateColumn()
-  fechaEliminacion?: Date;       // Soft delete timestamp
+  fechaEliminacion?: Date; // Soft delete timestamp
 
   @Column()
-  usuarioCreacion?: string;      // Quién creó el registro
+  usuarioCreacion?: string; // Quién creó el registro
 
   @Column()
-  usuarioModificacion?: string;  // Quién modificó el registro
+  usuarioModificacion?: string; // Quién modificó el registro
 
   @Column()
-  usuarioEliminacion?: string;   // Quién eliminó el registro
+  usuarioEliminacion?: string; // Quién eliminó el registro
 
   @Column({ default: 'activo' })
-  estado: string;                // Estado del registro
+  estado: string; // Estado del registro
 
   // Métodos de conveniencia
   get isActivo(): boolean;
@@ -159,7 +160,7 @@ export class UsuarioService {
 
   async eliminarSoft(id: number, usuario: string): Promise<void> {
     await this.usuarioRepository.softDelete(id);
-    
+
     // Actualizar campos de auditoría
     await this.usuarioRepository.update(id, {
       usuarioEliminacion: usuario,
@@ -272,12 +273,14 @@ extra: {
 ### Configuración por Ambiente
 
 #### Desarrollo
+
 ```typescript
 synchronize: true,              // Auto-sync de schema
 logging: ['query', 'error'],   // Logs detallados
 ```
 
 #### Producción
+
 ```typescript
 synchronize: false,            // Solo migraciones
 logging: ['error'],           // Solo errores
@@ -287,12 +290,14 @@ ssl: true,                    // Conexión segura
 ## 📊 Características TypeORM Habilitadas
 
 ### Auto-detección de Entities
+
 ```typescript
 entities: [__dirname + '/../**/*.entity{.ts,.js}'],
 autoLoadEntities: true,
 ```
 
 ### Soft Deletes Automático
+
 ```typescript
 // BaseEntity incluye @DeleteDateColumn
 fechaEliminacion?: Date;
@@ -339,6 +344,7 @@ describe('UsuarioService', () => {
 ## 🚨 Mejores Prácticas
 
 ### Naming Conventions
+
 ```typescript
 // ✅ Correcto
 @Entity('usuarios')              // Tabla en snake_case plural
@@ -353,13 +359,14 @@ export class Usuario extends BaseEntity {
 ```
 
 ### Índices Estratégicos
+
 ```typescript
 @Entity('usuarios')
-@Index(['email'])                // Índice para búsquedas por email
+@Index(['email']) // Índice para búsquedas por email
 @Index(['estado', 'fechaCreacion']) // Índice compuesto para queries comunes
 export class Usuario extends BaseEntity {
   @Column({ unique: true })
-  @Index()                       // Índice adicional si es necesario
+  @Index() // Índice adicional si es necesario
   email: string;
 }
 ```
@@ -369,11 +376,13 @@ export class Usuario extends BaseEntity {
 ### Error: "No repository found"
 
 **Síntomas:**
+
 ```
 No repository for "Usuario" was found. Looks like this entity is not registered in current "default" connection?
 ```
 
 **Solución:**
+
 1. Verificar que la entity esté decorada con `@Entity()`
 2. Verificar que esté en el path correcto para auto-detección
 3. Agregar el módulo al `forFeature()` si es necesario:
@@ -389,11 +398,13 @@ export class UsuarioModule {}
 ### Error: "Connection timeout"
 
 **Síntomas:**
+
 ```
 TimeoutError: Timeout acquiring a connection. The pool is probably full.
 ```
 
 **Solución:**
+
 1. Verificar configuración del pool de conexiones
 2. Cerrar conexiones correctamente en servicios
 3. Revisar queries lentos que bloquean el pool
@@ -401,6 +412,7 @@ TimeoutError: Timeout acquiring a connection. The pool is probably full.
 ## 🔗 Integración con Otros Módulos
 
 ### Módulos que Usan DatabaseModule
+
 - **Módulo 6**: Autenticación (entities Usuario, Sesion)
 - **Módulo 7**: Autorización (entities Rol, Permiso)
 - **Módulo 8**: Gestión de Usuarios (repositories y servicios)
@@ -410,11 +422,12 @@ TimeoutError: Timeout acquiring a connection. The pool is probably full.
 - **Módulo 12**: Reportes (queries complejas)
 
 ### Patrón de Importación
+
 ```typescript
 // En módulos específicos
 @Module({
   imports: [
-    DatabaseModule,                    // ← Importar DatabaseModule
+    DatabaseModule, // ← Importar DatabaseModule
     TypeOrmModule.forFeature([Usuario]), // ← Registrar entities específicas
   ],
   providers: [UsuarioService],
@@ -469,5 +482,3 @@ Si encuentras problemas:
 3. **Consulta health check** en `/sistema/health`
 4. **Revisa pool de conexiones** si hay timeouts
 5. **Valida entities** estén correctamente decoradas
-
-El módulo está **completamente migrado de Prisma a TypeORM** y listo para servir como base de datos para todos los módulos posteriores del sistema.
