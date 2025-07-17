@@ -7,7 +7,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![TypeORM](https://img.shields.io/badge/TypeORM-FE0803?style=flat&logo=typeorm&logoColor=white)](https://typeorm.io/)
 
 ## 🎯 Descripción
 
@@ -31,7 +31,7 @@ Sistema Base Individual es una **infraestructura de código completa y reutiliza
 ### Backend
 
 - **Framework**: NestJS con TypeScript
-- **Base de Datos**: PostgreSQL 17 + Prisma ORM
+- **Base de Datos**: PostgreSQL 17 + TypeORM
 - **Cache**: Redis 7 + Bull Queue
 - **Seguridad**: JWT + Passport + bcryptjs
 - **Validación**: class-validator + Zod
@@ -131,10 +131,12 @@ cp .env.example .env
 # Editar .env con tus configuraciones
 
 # 5. Ejecutar migraciones de base de datos
-npm run db:generate
-npm run db:push
+npm run migration:run
 
-# 6. Iniciar el servidor de desarrollo
+# 6. Ejecutar seeds (opcional)
+npm run seed
+
+# 7. Iniciar el servidor de desarrollo
 npm run start:dev
 ```
 
@@ -158,9 +160,9 @@ backend-base/
 │   │   ├── respuestas/        # ✅ Módulo 4 - Respuestas Estandarizadas
 │   │   └── observabilidad/    # ✅ Módulo 5 - Observabilidad (Logging + Auditoría)
 │   ├── common/               # Utilidades compartidas
-│   ├── config/               # Configuraciones
+│   ├── config/               # Configuraciones técnicas
 │   └── main.ts              # Punto de entrada
-├── prisma/                  # Schema y migraciones
+├── src/database/            # Migraciones y seeds TypeORM
 ├── test/                    # Pruebas E2E
 ├── docker-compose.yml       # Servicios de desarrollo
 └── package.json
@@ -181,8 +183,8 @@ backend-base/
 
 #### **Módulo 2: Base de Datos (Database)**
 
-- ✅ Conexión Prisma ORM con PostgreSQL y lifecycle management
-- ✅ Health checks reales con verificación `SELECT 1`
+- ✅ Conexión TypeORM con PostgreSQL y lifecycle management
+- ✅ Health checks reales con verificación de conectividad
 - ✅ Patrón de auditoría base para todas las entidades
 - ✅ **Logger nativo NestJS** para máxima confiabilidad
 - ✅ Logging detallado de conexión y manejo robusto de errores
@@ -322,7 +324,13 @@ APP_VERSION=1.0.0
 FRONTEND_URL=http://localhost:3000
 API_URL=http://localhost:3001
 
-# Base de Datos
+# Base de Datos TypeORM
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=sistema_base_db
+DB_SSL=false
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sistema_base_db"
 
 # Redis
@@ -380,7 +388,7 @@ Ver `.env.example` para la configuración completa.
 
 El sistema incluye endpoints de salud que verifican **conectividad real**:
 
-- ✅ **PostgreSQL**: Verificación con `SELECT 1` real
+- ✅ **PostgreSQL**: Verificación con consulta real a base de datos
 - ✅ **Redis**: PING real con métricas de latencia
 - ✅ **Servicios externos**: Estado de email y storage
 - ✅ **Configuración**: Validación completa de variables críticas
@@ -428,12 +436,12 @@ npm run start:dev          # Servidor en modo watch
 npm run lint              # Ejecutar linter
 npm run format            # Formatear código
 
-# Base de datos
-npm run db:generate       # Generar cliente Prisma
-npm run db:migrate        # Ejecutar migraciones
-npm run db:push          # Push cambios (desarrollo)
-npm run db:seed          # Ejecutar seeders
-npm run db:studio        # Abrir Prisma Studio
+# Base de datos TypeORM
+npm run migration:generate -- NombreMigracion  # Generar migración
+npm run migration:run                          # Ejecutar migraciones
+npm run migration:revert                       # Revertir migración
+npm run schema:sync                            # Sincronizar schema (desarrollo)
+npm run seed                                   # Ejecutar seeders
 
 # Testing
 npm run test             # Pruebas unitarias
@@ -534,7 +542,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 ## 🙏 Agradecimientos
 
 - **NestJS Team** - Por el increíble framework modular
-- **Prisma Team** - Por la mejor experiencia de ORM
+- **TypeORM Team** - Por el ORM enterprise-grade con decoradores
 - **Redis Labs** - Por la velocidad y confiabilidad
 - **Vercel** - Por Next.js y la inspiración en DX
 - **Comunidad Open Source** - Por las herramientas que hacen esto posible
