@@ -4,6 +4,14 @@ Este directorio contiene las migraciones de TypeORM.
 
 ## Comandos útiles:
 
+Creamos los esquemas correspondientes
+
+```
+CREATE SCHEMA sistema
+CREATE SCHEMA seguridad
+CREATE SCHEMA comunicacion
+```
+
 ```bash
 # Generar migración automáticamente
 npm run migration:generate -- src/database/migrations/CreateUsers

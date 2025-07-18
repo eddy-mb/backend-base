@@ -73,9 +73,6 @@ export class RedisService
 
       this.conectado = true;
       this.ultimoError = undefined;
-      this.logger.log(
-        `✅ Redis conectado en ${configRedis.host}:${configRedis.port}`,
-      );
     } catch (error) {
       this.conectado = false;
       this.ultimoError =

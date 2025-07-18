@@ -1,4 +1,5 @@
 # Módulo 4: Respuestas Estandarizadas
+
 ## **Formato Consistente con Wrapper { data: ... }**
 
 ## 📋 Descripción
@@ -38,6 +39,7 @@ export class AppModule {}
 ### 2. Uso en Controladores
 
 #### 🔹 Respuesta de Entidad Única
+
 ```typescript
 @Controller('usuarios')
 export class UsuarioController {
@@ -58,6 +60,7 @@ export class UsuarioController {
 ```
 
 #### 🔹 Lista Simple
+
 ```typescript
 @Get()
 async listarUsuarios() {
@@ -74,13 +77,14 @@ async listarUsuarios() {
 ```
 
 #### 🔹 Lista Paginada
+
 ```typescript
 import { UsePagination } from '@/modules/respuestas';
 
 @Get()
 @UsePagination() // ← Decorador mágico
 async listarUsuariosPaginados(@Query() params: any) {
-  // El servicio debe retornar: { data: T[], total: number }
+  // El servicio debe retornar: { data: T[], total: number } o [data: T[], total: number]
   return this.usuarioService.listarPaginado(params);
 }
 
@@ -102,6 +106,7 @@ async listarUsuariosPaginados(@Query() params: any) {
 ```
 
 #### 🔹 Respuesta Vacía (DELETE)
+
 ```typescript
 @Delete(':id')
 async eliminarUsuario(@Param('id') id: number) {
@@ -113,6 +118,7 @@ async eliminarUsuario(@Param('id') id: number) {
 ### 3. Manejo de Errores
 
 #### 🔸 Errores de Validación (Automático)
+
 ```typescript
 // DTO con class-validator
 export class CrearUsuarioDto {
@@ -143,6 +149,7 @@ export class CrearUsuarioDto {
 ```
 
 #### 🔸 Errores de Negocio
+
 ```typescript
 import { BusinessException } from '@/modules/respuestas';
 
@@ -156,18 +163,19 @@ if (await this.existeEmail(email)) {
 }
 
 // Factory methods disponibles:
-BusinessException.notFound(resource, id)
-BusinessException.alreadyExists(resource, field, value)
-BusinessException.operationNotAllowed(operation, reason)
-BusinessException.insufficientFunds(current, required)
-BusinessException.invalidState(current, allowed, resource)
-BusinessException.conflict(resource, reason)
-BusinessException.businessRuleViolation(rule, message, details)
+BusinessException.notFound(resource, id);
+BusinessException.alreadyExists(resource, field, value);
+BusinessException.operationNotAllowed(operation, reason);
+BusinessException.insufficientFunds(current, required);
+BusinessException.invalidState(current, allowed, resource);
+BusinessException.conflict(resource, reason);
+BusinessException.businessRuleViolation(rule, message, details);
 ```
 
 ## 🛠️ Utilidades de Paginación
 
 ### En Servicios
+
 ```typescript
 import { PaginationUtils } from '@/modules/respuestas';
 
@@ -176,18 +184,26 @@ export class UsuarioService {
   async listarPaginado(queryParams: any) {
     // Extraer parámetros de paginación de query string
     const paginationParams = PaginationUtils.fromQuery(queryParams);
-    
+
     // Configurar TypeORM con offset/limit
     const typeormConfig = PaginationUtils.toTypeOrmConfig(paginationParams);
-    
+
     // Consultar datos y total
     const [data, total] = await Promise.all([
       this.usuarioRepository.find({
         ...typeormConfig,
-        where: { /* filtros */ },
-        select: { /* campos */ },
+        where: {
+          /* filtros */
+        },
+        select: {
+          /* campos */
+        },
       }),
-      this.usuarioRepository.count({ where: { /* mismos filtros */ } }),
+      this.usuarioRepository.count({
+        where: {
+          /* mismos filtros */
+        },
+      }),
     ]);
 
     // Retornar en formato esperado por @UsePagination()
@@ -197,6 +213,7 @@ export class UsuarioService {
 ```
 
 ### Métodos Disponibles en PaginationUtils
+
 ```typescript
 // Extraer parámetros de query string
 fromQuery(query: Record<string, any>): PaginationParams
@@ -211,6 +228,7 @@ calculateMeta(total: number, params: PaginationParams): PaginationMeta
 ## 📝 Tipos TypeScript
 
 ### Interfaces Principales
+
 ```typescript
 // Respuesta estándar con wrapper
 interface StandardResponse<T> {
@@ -235,9 +253,9 @@ interface PaginationMeta {
 
 // Parámetros de paginación
 interface PaginationParams {
-  page: number;    // Página actual (base 1)
-  limit: number;   // Elementos por página (máx 100)
-  offset: number;  // Calculado: (page - 1) * limit
+  page: number; // Página actual (base 1)
+  limit: number; // Elementos por página (máx 100)
+  offset: number; // Calculado: (page - 1) * limit
 }
 
 // Resultado de servicio para @UsePagination()
@@ -259,39 +277,43 @@ interface ErrorResponse {
 ## 💡 Ventajas del Formato Consistente
 
 ### Para Desarrolladores
+
 - **Parsing Uniforme**: Siempre `response.data` en clientes
 - **Predictibilidad**: No hay que adivinar la estructura
 - **Type Safety**: Un solo tipo de respuesta para manejar
 - **Extensibilidad**: Fácil agregar metadata global
 
 ### Para APIs
+
 - **Consistencia Total**: Mismo formato para todas las respuestas exitosas
 - **Mantenibilidad**: Una sola lógica de parsing en cliente
 - **Escalabilidad**: Fácil evolución sin breaking changes
 - **Standards**: Muchas APIs empresariales usan este patrón (GitHub, Stripe, etc.)
 
 ### Para Clientes Frontend
+
 ```javascript
 // JavaScript/TypeScript - Parsing uniforme
 const response = await fetch('/api/usuarios/1');
 const json = await response.json();
-const user = json.data;  // ✅ Siempre aquí
+const user = json.data; // ✅ Siempre aquí
 
 // Para listas
 const listResponse = await fetch('/api/usuarios');
 const listJson = await listResponse.json();
-const users = listJson.data;  // ✅ Siempre aquí
+const users = listJson.data; // ✅ Siempre aquí
 
 // Para paginadas
 const pagedResponse = await fetch('/api/usuarios?page=1&limit=10');
 const pagedJson = await pagedResponse.json();
-const users = pagedJson.data;        // ✅ Datos
-const pagination = pagedJson.pagination;  // ✅ Metadatos
+const users = pagedJson.data; // ✅ Datos
+const pagination = pagedJson.pagination; // ✅ Metadatos
 ```
 
 ## 📄 Ejemplos de Respuestas
 
 ### ✅ Éxito - Entidad Única
+
 ```json
 {
   "data": {
@@ -304,6 +326,7 @@ const pagination = pagedJson.pagination;  // ✅ Metadatos
 ```
 
 ### ✅ Éxito - Lista Simple
+
 ```json
 {
   "data": [
@@ -314,6 +337,7 @@ const pagination = pagedJson.pagination;  // ✅ Metadatos
 ```
 
 ### ✅ Éxito - Lista Paginada
+
 ```json
 {
   "data": [
@@ -332,6 +356,7 @@ const pagination = pagedJson.pagination;  // ✅ Metadatos
 ```
 
 ### ❌ Error - Validación
+
 ```json
 {
   "error": {
@@ -352,6 +377,7 @@ const pagination = pagedJson.pagination;  // ✅ Metadatos
 ```
 
 ### ❌ Error - Negocio
+
 ```json
 {
   "error": {
@@ -368,6 +394,7 @@ const pagination = pagedJson.pagination;  // ✅ Metadatos
 ## 🔄 Comparación con Formato Anterior
 
 ### **ANTES (Datos Directos):**
+
 ```json
 // ❌ Inconsistente - diferentes estructuras
 { "id": 1, "nombre": "Juan" }                    // Entidad
@@ -376,16 +403,18 @@ const pagination = pagedJson.pagination;  // ✅ Metadatos
 ```
 
 ### **AHORA (Wrapper Consistente):**
+
 ```json
 // ✅ Consistente - siempre mismo patrón
 { "data": { "id": 1, "nombre": "Juan" } }        // Entidad
-{ "data": [{ "id": 1 }, { "id": 2 }] }           // Lista  
+{ "data": [{ "id": 1 }, { "id": 2 }] }           // Lista
 { "data": [...], "pagination": {...} }           // Paginada
 ```
 
 ## 🧪 Testing
 
 ### Ejecutar Pruebas
+
 ```bash
 # Pruebas unitarias del módulo
 npm test -- respuestas
@@ -398,6 +427,7 @@ npm run start:dev
 ```
 
 ### Validar Respuestas en Endpoints Existentes
+
 ```bash
 # Health check - debe tener wrapper { data: ... }
 curl http://localhost:3001/sistema/health | jq '.data'
@@ -412,6 +442,7 @@ curl -X POST http://localhost:3001/test-endpoint | jq '.error'
 ## 📋 Códigos de Error Disponibles
 
 ### Validación
+
 - `VALIDATION_ERROR` - Error general de validación
 - `REQUIRED_FIELD` - Campo requerido
 - `INVALID_FORMAT` - Formato inválido
@@ -420,23 +451,27 @@ curl -X POST http://localhost:3001/test-endpoint | jq '.error'
 - `INVALID_VALUE` - Valor inválido
 
 ### Autenticación/Autorización
+
 - `UNAUTHORIZED` - No autenticado
 - `FORBIDDEN` - Sin permisos
 - `TOKEN_EXPIRED` - Token expirado
 - `INVALID_CREDENTIALS` - Credenciales inválidas
 
 ### Recursos
+
 - `NOT_FOUND` - Recurso no encontrado
 - `ALREADY_EXISTS` - Recurso ya existe
 - `CONFLICT` - Conflicto de recursos
 
 ### Sistema
+
 - `INTERNAL_ERROR` - Error interno
 - `DATABASE_ERROR` - Error de base de datos
 - `SERVICE_UNAVAILABLE` - Servicio no disponible
 - `RATE_LIMIT_EXCEEDED` - Límite de requests excedido
 
 ### Negocio
+
 - `BUSINESS_RULE_VIOLATION` - Regla de negocio violada
 - `OPERATION_NOT_ALLOWED` - Operación no permitida
 - `INVALID_OPERATION_STATE` - Estado inválido para operación
@@ -444,6 +479,7 @@ curl -X POST http://localhost:3001/test-endpoint | jq '.error'
 ## 🏗️ Arquitectura Interna
 
 ### Componentes Principales
+
 ```
 ResponseModule
 ├── ResponseInterceptor    # Aplica wrapper { data: ... } automáticamente
@@ -455,6 +491,7 @@ ResponseModule
 ```
 
 ### Flujo de Ejecución
+
 ```
 Request → Controller → Service → Response
                            ↓
@@ -471,13 +508,13 @@ Si migras desde el formato "datos directos", solo necesitas actualizar el parsin
 
 ```javascript
 // ANTES
-const user = response;        // Datos directos
-const users = response;       // Array directo
-const errors = response;      // Error directo
+const user = response; // Datos directos
+const users = response; // Array directo
+const errors = response; // Error directo
 
-// AHORA  
-const user = response.data;   // ✅ Wrapper consistente
-const users = response.data;  // ✅ Wrapper consistente
+// AHORA
+const user = response.data; // ✅ Wrapper consistente
+const users = response.data; // ✅ Wrapper consistente
 const errors = response.error; // ❌ Errores sin wrapper (estándar)
 ```
 
@@ -496,6 +533,7 @@ const errors = response.error; // ❌ Errores sin wrapper (estándar)
 ## 🎯 Casos de Uso Verificados
 
 ### ✅ Módulo 1 (Configuración)
+
 ```typescript
 // src/modules/configuracion/controllers/sistema.controller.ts
 import { BusinessException } from '../../respuestas';

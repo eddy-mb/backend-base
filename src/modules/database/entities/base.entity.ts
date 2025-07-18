@@ -30,7 +30,7 @@ export abstract class BaseEntity {
   id: number;
 
   @CreateDateColumn({
-    name: 'fecha_creacion',
+    name: '_fecha_creacion',
     type: 'timestamp with time zone',
     comment: 'Fecha y hora de creación del registro',
   })
@@ -38,14 +38,14 @@ export abstract class BaseEntity {
   fechaCreacion: Date;
 
   @UpdateDateColumn({
-    name: 'fecha_modificacion',
+    name: '_fecha_modificacion',
     type: 'timestamp with time zone',
     comment: 'Fecha y hora de la última modificación',
   })
   fechaModificacion: Date;
 
   @DeleteDateColumn({
-    name: 'fecha_eliminacion',
+    name: '_fecha_eliminacion',
     type: 'timestamp with time zone',
     comment: 'Fecha y hora de eliminación lógica (soft delete)',
   })
@@ -53,7 +53,7 @@ export abstract class BaseEntity {
   fechaEliminacion?: Date;
 
   @Column({
-    name: 'usuario_creacion',
+    name: '_usuario_creacion',
     nullable: true,
     comment: 'ID o email del usuario que creó el registro',
   })
@@ -61,20 +61,21 @@ export abstract class BaseEntity {
   usuarioCreacion?: string;
 
   @Column({
-    name: 'usuario_modificacion',
+    name: '_usuario_modificacion',
     nullable: true,
     comment: 'ID o email del usuario que modificó el registro',
   })
   usuarioModificacion?: string;
 
   @Column({
-    name: 'usuario_eliminacion',
+    name: '_usuario_eliminacion',
     nullable: true,
     comment: 'ID o email del usuario que eliminó el registro',
   })
   usuarioEliminacion?: string;
 
   @Column({
+    name: '_estado',
     default: 'activo',
     comment: 'Estado del registro (activo, inactivo, pendiente, etc.)',
   })
