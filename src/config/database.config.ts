@@ -1,6 +1,8 @@
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import dotenv from 'dotenv';
 
+dotenv.config();
 // Función para crear configuración de TypeORM
 export const createTypeOrmConfig = (
   configService: ConfigService,

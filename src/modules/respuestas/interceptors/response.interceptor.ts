@@ -62,6 +62,16 @@ export class ResponseInterceptor implements NestInterceptor {
     // Extraer parámetros de paginación de la request
     const params = PaginationUtils.fromQuery(request.query);
 
+    // Caso: resultado en formato [T[], number]
+    if (this.isTupleResult<unknown>(data)) {
+      const [items, total] = data;
+      const meta = PaginationUtils.calculateMeta(total, params);
+      return {
+        data: items,
+        pagination: meta,
+      };
+    }
+
     // Si ya es un resultado paginado del servicio
     if (this.isPaginatedResult<unknown>(data)) {
       const meta = PaginationUtils.calculateMeta(data.total, params);
@@ -95,6 +105,19 @@ export class ResponseInterceptor implements NestInterceptor {
       'total' in data &&
       Array.isArray(data.data) &&
       typeof data.total === 'number'
+    );
+  }
+
+  /**
+   * Verifica si los datos tienen estructura de tupla
+   */
+
+  private isTupleResult<T>(data: unknown): data is [T[], number] {
+    return (
+      Array.isArray(data) &&
+      data.length === 2 &&
+      Array.isArray(data[0]) &&
+      typeof data[1] === 'number'
     );
   }
 }
