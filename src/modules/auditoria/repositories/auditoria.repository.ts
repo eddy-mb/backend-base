@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { AuditoriaLog } from '../entities/auditoria-log.entity';
 import { AuditoriaQueryDto } from '../dto/auditoria.dto';
 
@@ -11,17 +10,13 @@ import { AuditoriaQueryDto } from '../dto/auditoria.dto';
  */
 @Injectable()
 export class AuditoriaRepository {
-  constructor(
-    @InjectRepository(AuditoriaLog)
-    private repository: Repository<AuditoriaLog>,
-  ) {}
+  constructor(private dataSource: DataSource) {}
 
   /**
    * Crear un nuevo registro de auditoría
    */
   async crear(datos: Partial<AuditoriaLog>): Promise<AuditoriaLog> {
-    const log = this.repository.create(datos);
-    return await this.repository.save(log);
+    return await this.dataSource.getRepository(AuditoriaLog).save(datos);
   }
 
   /**
@@ -43,7 +38,9 @@ export class AuditoriaRepository {
       orderBy,
       orderDirection,
     } = filtros;
-    const query = this.repository.createQueryBuilder('auditoria');
+    const query = this.dataSource
+      .getRepository(AuditoriaLog)
+      .createQueryBuilder('auditoria');
     if (tabla) query.andWhere('auditoria.tabla = :tabla', { tabla });
     if (usuarioId)
       query.andWhere('auditoria.usuarioId = :usuarioId', { usuarioId });
