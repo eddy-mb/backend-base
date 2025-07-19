@@ -82,6 +82,11 @@ export interface ConfiguracionLogging {
   format: 'json' | 'simple'; // Inferido por ambiente
 }
 
+export interface ConfiguracionOAuth {
+  googleClientId?: string;
+  googleClientSecret?: string;
+}
+
 export interface EstadoSistema {
   sistemaOperativo: boolean;
   servicios: {

@@ -80,6 +80,13 @@ export const esquemaWinston = z.object({
     .default('true'),
 });
 
+// Esquema para OAuth (nuevo para autenticación)
+export const esquemaOAuth = z.object({
+  // OAuth Google (opcional)
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+});
+
 // Esquema para Servicios Externos
 export const esquemaServiciosExternos = z.object({
   // Email
@@ -110,6 +117,7 @@ export const esquemaConfiguracion = z.object({
   ...esquemaAplicacion.shape,
   ...esquemaSeguridad.shape,
   ...esquemaWinston.shape,
+  ...esquemaOAuth.shape,
   ...esquemaServiciosExternos.shape,
 });
 
@@ -118,6 +126,7 @@ export type ConfiguracionBaseDatos = z.infer<typeof esquemaBaseDatos>;
 export type ConfiguracionAplicacion = z.infer<typeof esquemaAplicacion>;
 export type ConfiguracionSeguridad = z.infer<typeof esquemaSeguridad>;
 export type ConfiguracionWinston = z.infer<typeof esquemaWinston>;
+export type ConfiguracionOAuth = z.infer<typeof esquemaOAuth>;
 export type ConfiguracionServiciosExternos = z.infer<
   typeof esquemaServiciosExternos
 >;
