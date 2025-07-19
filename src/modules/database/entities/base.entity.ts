@@ -76,8 +76,8 @@ export abstract class BaseEntity {
 
   @Column({
     name: '_estado',
-    default: 'activo',
-    comment: 'Estado del registro (activo, inactivo, pendiente, etc.)',
+    nullable: false,
+    comment: 'Estado del registro',
   })
   @Index()
   estado: string;
