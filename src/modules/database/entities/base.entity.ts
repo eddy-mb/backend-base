@@ -75,18 +75,18 @@ export abstract class BaseEntity {
   usuarioEliminacion?: string;
 
   @Column({
-    name: '_estado',
-    nullable: false,
-    comment: 'Estado del registro',
+    name: '_is_active',
+    default: true,
+    comment: 'Indica si el registro está activo (true) o eliminado (false)',
   })
   @Index()
-  estado: string;
+  isActive: boolean;
 
   /**
    * Verifica si el registro está activo
    */
   get isActivo(): boolean {
-    return this.estado === 'activo' && !this.fechaEliminacion;
+    return this.isActive && !this.fechaEliminacion;
   }
 
   /**
@@ -102,7 +102,7 @@ export abstract class BaseEntity {
   marcarComoEliminado(usuario?: string): void {
     this.fechaEliminacion = new Date();
     this.usuarioEliminacion = usuario;
-    this.estado = 'eliminado';
+    this.isActive = false;
   }
 
   /**
@@ -112,7 +112,7 @@ export abstract class BaseEntity {
     this.fechaEliminacion = undefined;
     this.usuarioEliminacion = undefined;
     this.usuarioModificacion = usuario;
-    this.estado = 'activo';
+    this.isActive = true;
   }
 
   /**
