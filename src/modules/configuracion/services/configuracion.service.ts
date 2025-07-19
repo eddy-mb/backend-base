@@ -12,6 +12,7 @@ import {
   ConfiguracionAplicacion,
   ConfiguracionSeguridad,
   ConfiguracionLogging,
+  ConfiguracionOAuth,
   ConfiguracionPublica,
 } from '../interfaces/configuracion.interface';
 
@@ -126,6 +127,12 @@ export class ConfiguracionService {
         ),
         AWS_REGION: this.configService.get<string>('AWS_REGION'),
         AWS_S3_BUCKET: this.configService.get<string>('AWS_S3_BUCKET'),
+
+        // OAuth - nuevas variables para autenticación
+        GOOGLE_CLIENT_ID: this.configService.get<string>('GOOGLE_CLIENT_ID'),
+        GOOGLE_CLIENT_SECRET: this.configService.get<string>(
+          'GOOGLE_CLIENT_SECRET',
+        ),
 
         // Winston/Logging - variables nuevas
         WINSTON_MAX_FILES: this.configService.get<string>(
@@ -285,6 +292,13 @@ export class ConfiguracionService {
     };
   }
 
+  get oauth(): ConfiguracionOAuth {
+    return {
+      googleClientId: this.configuracion.GOOGLE_CLIENT_ID,
+      googleClientSecret: this.configuracion.GOOGLE_CLIENT_SECRET,
+    };
+  }
+
   // Método para verificar si una característica está habilitada
   caracteristicaHabilitada(caracteristica: string): boolean {
     switch (caracteristica) {
@@ -301,6 +315,11 @@ export class ConfiguracionService {
         return (
           !!this.configuracion.AWS_ACCESS_KEY_ID &&
           !!this.configuracion.AWS_SECRET_ACCESS_KEY
+        );
+      case 'oauth_google':
+        return (
+          !!this.configuracion.GOOGLE_CLIENT_ID &&
+          !!this.configuracion.GOOGLE_CLIENT_SECRET
         );
       default:
         return false;
