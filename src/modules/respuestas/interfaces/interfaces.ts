@@ -8,6 +8,7 @@
  */
 export interface StandardResponse<T> {
   data: T;
+  message?: string;
 }
 
 /**
@@ -16,6 +17,7 @@ export interface StandardResponse<T> {
 export interface PaginatedResponse<T> {
   data: T[];
   pagination: PaginationMeta;
+  message?: string;
 }
 
 /**
@@ -40,11 +42,20 @@ export interface PaginationParams {
 }
 
 /**
- * Resultado de servicio paginado
+ * Resultado de servicio paginado con mensaje opcional
  */
-export interface PaginatedResult<T> {
+export interface ServicePaginatedResult<T> {
   data: T[];
   total: number;
+  message?: string;
+}
+
+/**
+ * Respuesta de servicio con mensaje opcional
+ */
+export interface ServiceResponse<T> {
+  data: T;
+  message?: string;
 }
 
 /**
@@ -66,25 +77,4 @@ export interface FieldError {
   message: string;
   code: string;
   value?: unknown;
-}
-
-/**
- * Parámetros de query estándar para listados
- */
-export interface QueryParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sort?: string;
-  order?: 'asc' | 'desc';
-  [key: string]: unknown;
-}
-
-/**
- * Información de rango para paginación
- */
-export interface RangeInfo {
-  start: number;
-  end: number;
-  showing: number;
 }
