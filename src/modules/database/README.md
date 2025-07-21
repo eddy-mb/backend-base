@@ -94,8 +94,8 @@ export abstract class BaseEntity {
   @Column()
   usuarioEliminacion?: string; // Quién eliminó el registro
 
-  @Column({ default: 'activo' })
-  estado: string; // Estado del registro
+  @Column({ default: true })
+  isActive: boolean; // Estado activo/eliminado del registro
 
   // Métodos de conveniencia
   get isActivo(): boolean;
@@ -125,7 +125,7 @@ export class Usuario extends BaseEntity {
 
   // Campos de BaseEntity se incluyen automáticamente:
   // id, fechaCreacion, fechaModificacion, fechaEliminacion,
-  // usuarioCreacion, usuarioModificacion, usuarioEliminacion, estado
+  // usuarioCreacion, usuarioModificacion, usuarioEliminacion, isActive
 }
 ```
 
@@ -153,7 +153,7 @@ export class UsuarioService {
 
   async buscarActivos(): Promise<Usuario[]> {
     return await this.usuarioRepository.find({
-      where: { estado: 'activo' },
+      where: { isActive: true },
       order: { fechaCreacion: 'DESC' },
     });
   }
@@ -164,7 +164,7 @@ export class UsuarioService {
     // Actualizar campos de auditoría
     await this.usuarioRepository.update(id, {
       usuarioEliminacion: usuario,
-      estado: 'eliminado',
+      isActive: false,
     });
   }
 }
@@ -186,11 +186,11 @@ export class ReporteService {
   async obtenerEstadisticas(): Promise<any> {
     return await this.dataSource.query(`
       SELECT 
-        estado,
+        _is_active,
         COUNT(*) as total
       FROM usuarios 
-      WHERE fecha_eliminacion IS NULL
-      GROUP BY estado
+      WHERE _fecha_eliminacion IS NULL
+      GROUP BY _is_active
     `);
   }
 }
@@ -336,7 +336,7 @@ describe('UsuarioService', () => {
     expect(usuario.id).toBeDefined();
     expect(usuario.usuarioCreacion).toBe('sistema');
     expect(usuario.fechaCreacion).toBeDefined();
-    expect(usuario.estado).toBe('activo');
+    expect(usuario.isActive).toBe(true);
   });
 });
 ```
@@ -363,7 +363,7 @@ export class Usuario extends BaseEntity {
 ```typescript
 @Entity('usuarios')
 @Index(['email']) // Índice para búsquedas por email
-@Index(['estado', 'fechaCreacion']) // Índice compuesto para queries comunes
+@Index(['isActive', 'fechaCreacion']) // Índice compuesto para queries comunes
 export class Usuario extends BaseEntity {
   @Column({ unique: true })
   @Index() // Índice adicional si es necesario

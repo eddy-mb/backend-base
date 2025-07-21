@@ -7,9 +7,10 @@ Este directorio contiene las migraciones de TypeORM.
 Creamos los esquemas correspondientes
 
 ```
-CREATE SCHEMA sistema
-CREATE SCHEMA seguridad
-CREATE SCHEMA comunicacion
+CREATE SCHEMA sistema;
+CREATE SCHEMA usuarios;
+CREATE SCHEMA administracion;
+CREATE SCHEMA mensajeria;
 ```
 
 ```bash

@@ -26,9 +26,6 @@ import {
  * }
  */
 export abstract class BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
-
   @CreateDateColumn({
     name: '_fecha_creacion',
     type: 'timestamp with time zone',
@@ -82,17 +79,23 @@ export abstract class BaseEntity {
   @Index()
   isActive: boolean;
 
+  @PrimaryGeneratedColumn({
+    name: 'id',
+    comment: 'Clave primaria de la tabla',
+  })
+  id: number;
+
   /**
    * Verifica si el registro está activo
    */
-  get isActivo(): boolean {
+  registroActivo(): boolean {
     return this.isActive && !this.fechaEliminacion;
   }
 
   /**
    * Verifica si el registro fue eliminado (soft delete)
    */
-  get isEliminado(): boolean {
+  get registroEliminado(): boolean {
     return !!this.fechaEliminacion;
   }
 
