@@ -1,121 +1,141 @@
 # Módulo 4: Respuestas Estandarizadas
 
-## **Formato Consistente con Wrapper { data: ... }**
+## **BaseController con Helpers Opcionales**
 
 ## 📋 Descripción
 
-Módulo que implementa un formato consistente para todas las respuestas HTTP usando wrapper `{ data: ... }` para máxima predictibilidad y uniformidad en la API. **Auto-configurado globalmente** sin necesidad de setup adicional.
+Módulo que proporciona helpers opcionales para respuestas consistentes y manejo global de errores. **Sin interceptors** - datos nativos por defecto.
 
 ## ✨ Características
 
-- ✅ **Formato Consistente**: Todas las respuestas exitosas usan `{ data: ... }`
-- ✅ **Paginación Automática**: Decorador `@UsePagination()` para listas con metadatos
-- ✅ **Manejo de Errores Unificado**: Un solo filtro que captura todas las excepciones
-- ✅ **Integración class-validator**: Conversión automática de errores de validación
-- ✅ **Configuración Cero**: Funciona inmediatamente sin setup adicional
-- ✅ **Factory Methods**: Excepciones con métodos de creación intuitivos
+- ✅ **Datos Nativos**: Sin helpers, respuestas tal como vienen del servicio
+- ✅ **BaseController**: Helpers opcionales para formato estructurado
+- ✅ **Manejo de Errores Unificado**: ErrorFilter global automático
+- ✅ **Integración class-validator**: Conversión automática de errores
+- ✅ **Factory Methods**: Excepciones con métodos intuitivos
 - ✅ **Type Safety**: Tipado completo con TypeScript
-- ✅ **Global**: Se aplica automáticamente a toda la aplicación
+- ✅ **Configuración Cero**: Funciona inmediatamente
 
-## 🚀 Instalación y Uso
+## 🚀 Uso
 
-### 1. Ya está Configurado Globalmente
+### 1. Ya está Configurado
 
 ```typescript
 // app.module.ts - YA CONFIGURADO ✅
 @Module({
   imports: [
-    ConfiguracionModule,
-    DatabaseModule,
-    RedisModule,
     ResponseModule, // ← Ya importado y funcionando
   ],
 })
 export class AppModule {}
 ```
 
-**¡No necesitas configurar nada más!** El módulo se aplica automáticamente a todos los controladores.
-
-### 2. Uso en Controladores
-
-#### 🔹 Respuesta de Entidad Única
+### 2. Controladores con BaseController
 
 ```typescript
+import { BaseController } from '@/common';
+
 @Controller('usuarios')
-export class UsuarioController {
+export class UsuarioController extends BaseController {
+  // Datos nativos - sin helpers
+  @Get('logs')
+  async obtenerLogs() {
+    return this.service.getLogs(); // → [logs, count] nativo
+  }
+
+  // Con helpers - formato estructurado
   @Get(':id')
   async obtenerUsuario(@Param('id') id: number) {
-    return this.usuarioService.buscarPorId(id); // Retorna entidad directamente
+    const usuario = await this.service.buscar(id);
+    return this.success(usuario, 'Usuario encontrado');
+  }
+
+  @Post()
+  async crear(@Body() datos: any) {
+    const usuario = await this.service.crear(datos);
+    return this.created(usuario);
+  }
+
+  @Get()
+  async listar(@Query() params: any) {
+    const { data, total } = await this.service.listar(params);
+    return this.paginated(data, total, 'Lista de usuarios');
   }
 }
-
-// Respuesta HTTP automática:
-// {
-//   "data": {
-//     "id": 123,
-//     "nombre": "Juan Pérez",
-//     "email": "juan@ejemplo.com"
-//   }
-// }
 ```
 
-#### 🔹 Lista Simple
+### 3. Helpers Disponibles
 
 ```typescript
-@Get()
-async listarUsuarios() {
-  return this.usuarioService.obtenerTodos(); // Retorna array directamente
-}
+// Response helpers
+this.success(data, message?)     // Respuesta exitosa
+this.created(data, message?)     // Recurso creado (201)
+this.updated(data, message?)     // Recurso actualizado
+this.deleted(data?, message?)    // Recurso eliminado
+this.paginated(data, total, message?) // Lista paginada
 
-// Respuesta HTTP automática:
-// {
-//   "data": [
-//     { "id": 1, "nombre": "Usuario 1" },
-//     { "id": 2, "nombre": "Usuario 2" }
-//   ]
-// }
+// Auth helpers
+this.getUser(req)    // Obtiene ID del usuario
+this.getRol(req)     // Obtiene rol del usuario
 ```
 
-#### 🔹 Lista Paginada
+## 📋 Ejemplos de Respuestas
 
-```typescript
-import { UsePagination } from '@/modules/respuestas';
+### Sin Helpers - Datos Nativos
 
-@Get()
-@UsePagination() // ← Decorador mágico
-async listarUsuariosPaginados(@Query() params: any) {
-  // El servicio debe retornar: { data: T[], total: number } o [data: T[], total: number]
-  return this.usuarioService.listarPaginado(params);
-}
+```json
+// Tupla TypeORM
+[
+  [
+    { "id": 1, "nombre": "Usuario 1" },
+    { "id": 2, "nombre": "Usuario 2" }
+  ],
+  50
+]
 
-// Respuesta HTTP automática:
-// {
-//   "data": [
-//     { "id": 1, "nombre": "Usuario 1" },
-//     { "id": 2, "nombre": "Usuario 2" }
-//   ],
-//   "pagination": {
-//     "total": 150,
-//     "page": 2,
-//     "limit": 10,
-//     "total_pages": 15,
-//     "has_next": true,
-//     "has_previous": true
-//   }
-// }
+// Array simple
+[
+  { "id": 1, "nombre": "Usuario 1" },
+  { "id": 2, "nombre": "Usuario 2" }
+]
+
+// Objeto
+{ "id": 1, "nombre": "Usuario 1" }
 ```
 
-#### 🔹 Respuesta Vacía (DELETE)
+### Con Helpers - Formato Estructurado
 
-```typescript
-@Delete(':id')
-async eliminarUsuario(@Param('id') id: number) {
-  await this.usuarioService.eliminar(id);
-  return; // HTTP 204 No Content automático
+```json
+// this.success()
+{
+  "data": { "id": 1, "nombre": "Usuario 1" },
+  "message": "Usuario encontrado"
+}
+
+// this.paginated()
+{
+  "data": [
+    { "id": 1, "nombre": "Usuario 1" }
+  ],
+  "pagination": {
+    "total": 50,
+    "page": 1,
+    "limit": 10,
+    "total_pages": 5,
+    "has_next": true,
+    "has_previous": false
+  },
+  "message": "Lista de usuarios"
 }
 ```
 
-### 3. Manejo de Errores
+## ✅ Conclusión
+
+El módulo proporciona **flexibilidad total**:
+- **Sin helpers**: Datos como vienen del servicio
+- **Con helpers**: Formato estructurado y consistente
+- **ErrorFilter**: Manejo automático de errores
+- **BaseController**: Utilidades de auth integradas
 
 #### 🔸 Errores de Validación (Automático)
 
