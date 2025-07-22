@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
 import { DatabaseModule } from './modules/database/database.module';
 import { RedisModule } from './modules/redis/redis.module';
@@ -6,6 +7,7 @@ import { ResponseModule } from './modules/respuestas/response.module';
 import { LoggingModule } from './modules/logging/logging.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { AutenticacionModule } from './modules/autenticacion/autenticacion.module';
+import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 
 @Module({
   imports: [
@@ -18,6 +20,11 @@ import { AutenticacionModule } from './modules/autenticacion/autenticacion.modul
     AutenticacionModule, // Módulo de autenticación JWT
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: CustomThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

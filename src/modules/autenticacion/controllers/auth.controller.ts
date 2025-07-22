@@ -18,7 +18,7 @@ import {
   ApiBearerAuth,
   ApiBody,
 } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../services/auth.service';
 import { AUTH_CONSTANTS, AUTH_MESSAGES } from '../constants/auth.constants';
@@ -27,131 +27,95 @@ import { RegistroDto } from '../dto/registro.dto';
 import { LoginDto } from '../dto/login.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { SolicitarResetDto } from '../dto/solicitar-reset.dto';
-import {
-  AuthResponseDto,
-  TokenResponseDto,
-  MensajeResponseDto,
-} from '../dto/auth-response.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { Public } from '../decorators/public.decorator';
-import { GetUser } from '../decorators/get-user.decorator';
-import { RequestUser } from '../interfaces/auth.interfaces';
+import { BaseController } from '../../../common/base/base.controller';
+import { RequestWithUser } from '../../../common/interfaces/request.interface';
+import { Auditable } from '../../auditoria/decorators/auditable.decorator';
 
 @ApiTags('Autenticación')
 @Controller('auth')
-export class AuthController {
+export class AuthController extends BaseController {
   constructor(
     private authService: AuthService,
     private configuracionService: ConfiguracionService,
-  ) {}
+  ) {
+    super();
+  }
 
-  @Public()
+  // Public
   @Post('registro')
+  @Auditable({ tabla: 'usuarios', descripcion: 'Registro de usuario' })
   @Throttle({ default: AUTH_CONSTANTS.RATE_LIMITS.REGISTER })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Registrar nuevo usuario' })
-  @ApiResponse({ status: 201, description: 'Usuario registrado exitosamente' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  @ApiResponse({ status: 409, description: 'Usuario ya existe' })
-  async registro(
-    @Body() registroDto: RegistroDto,
-  ): Promise<MensajeResponseDto> {
-    await this.authService.registrarUsuario(registroDto);
-
-    return {
-      mensaje: AUTH_MESSAGES.SUCCESS.REGISTRATION,
-    };
+  @ApiResponse({ status: 201, description: 'Usuario registrado' })
+  async registro(@Body() registroDto: RegistroDto) {
+    const result = await this.authService.registrarUsuario(registroDto);
+    return this.created(result, AUTH_MESSAGES.SUCCESS.REGISTRATION);
   }
 
-  @Public()
+  // Public
   @Post('login')
+  @Auditable({ tabla: 'usuarios', descripcion: 'Login de usuario' })
   @Throttle({ default: AUTH_CONSTANTS.RATE_LIMITS.LOGIN })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar sesión' })
-  @ApiResponse({
-    status: 200,
-    description: 'Login exitoso',
-    type: AuthResponseDto,
-  })
-  @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
-  @ApiResponse({ status: 429, description: 'Demasiados intentos' })
-  async login(
-    @Body() loginDto: LoginDto,
-    @Ip() ip: string,
-  ): Promise<AuthResponseDto> {
-    return this.authService.iniciarSesion(loginDto, ip);
+  @ApiResponse({ status: 200, description: 'Login exitoso' })
+  async login(@Body() loginDto: LoginDto, @Ip() ip: string) {
+    const result = await this.authService.iniciarSesion(loginDto, ip);
+    return this.success(result, AUTH_MESSAGES.SUCCESS.LOGIN_SUCCESS);
   }
 
+  // Private
   @Post('logout')
+  @Auditable({ tabla: 'usuarios', descripcion: 'Logout de usuario' })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cerrar sesión' })
   @ApiResponse({ status: 200, description: 'Logout exitoso' })
-  async logout(
-    @GetUser() user: RequestUser,
-    @Req() request: Request,
-  ): Promise<MensajeResponseDto> {
+  async logout(@Req() request: RequestWithUser) {
+    const userId = this.getUser(request);
     const token = request.headers.authorization?.replace('Bearer ', '') || '';
-    await this.authService.cerrarSesion(user.id, token);
-
-    return {
-      mensaje: AUTH_MESSAGES.SUCCESS.LOGOUT,
-    };
+    await this.authService.cerrarSesion(userId, token);
+    return this.success(null, AUTH_MESSAGES.SUCCESS.LOGOUT);
   }
 
-  @Public()
+  // Public
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renovar access token' })
   @ApiBody({
     schema: {
       type: 'object',
-      properties: {
-        refreshToken: {
-          type: 'string',
-          description: 'Refresh token válido',
-        },
-      },
+      properties: { refreshToken: { type: 'string' } },
     },
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Token renovado',
-    type: TokenResponseDto,
-  })
-  @ApiResponse({ status: 401, description: 'Refresh token inválido' })
-  async refresh(
-    @Body('refreshToken') refreshToken: string,
-  ): Promise<TokenResponseDto> {
+  @ApiResponse({ status: 200, description: 'Token renovado' })
+  async refresh(@Body('refreshToken') refreshToken: string) {
     const accessToken = await this.authService.renovarToken(refreshToken);
-
-    return { accessToken };
+    return this.success({ accessToken });
   }
 
-  @Public()
+  // Public
   @Get('verificar-email/:token')
   @ApiOperation({ summary: 'Verificar email con token' })
   @ApiResponse({ status: 302, description: 'Redirección a frontend' })
-  @ApiResponse({ status: 400, description: 'Token inválido' })
   async verificarEmail(
     @Param('token') token: string,
     @Res() response: Response,
-  ): Promise<void> {
+  ) {
     try {
       await this.authService.verificarEmail(token);
-
-      // Redireccionar a página de éxito en frontend
       const redirectUrl = `${this.configuracionService.aplicacion.frontendUrl}/verificacion-exitosa`;
       response.redirect(redirectUrl);
     } catch {
-      // Redireccionar a página de error en frontend
       const redirectUrl = `${this.configuracionService.aplicacion.frontendUrl}/verificacion-error`;
       response.redirect(redirectUrl);
     }
   }
 
-  @Public()
+  // Public
   @Post('reenviar-verificacion')
   @Throttle({ default: AUTH_CONSTANTS.RATE_LIMITS.RESEND_VERIFICATION })
   @HttpCode(HttpStatus.OK)
@@ -159,60 +123,38 @@ export class AuthController {
   @ApiBody({
     schema: {
       type: 'object',
-      properties: {
-        email: {
-          type: 'string',
-          format: 'email',
-        },
-      },
+      properties: { email: { type: 'string', format: 'email' } },
     },
   })
-  @ApiResponse({ status: 200, description: 'Email de verificación enviado' })
-  async reenviarVerificacion(
-    @Body('email') email: string,
-  ): Promise<MensajeResponseDto> {
+  @ApiResponse({ status: 200, description: 'Email enviado' })
+  async reenviarVerificacion(@Body('email') email: string) {
     await this.authService.reenviarVerificacion(email);
-
-    return {
-      mensaje: AUTH_MESSAGES.SUCCESS.VERIFICATION_SENT,
-    };
+    return this.success(null, AUTH_MESSAGES.SUCCESS.VERIFICATION_SENT);
   }
 
-  @Public()
+  // Public
   @Post('solicitar-reset')
   @Throttle({ default: AUTH_CONSTANTS.RATE_LIMITS.RESEND_VERIFICATION })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Solicitar reset de contraseña' })
   @ApiResponse({ status: 200, description: 'Email de reset enviado' })
-  async solicitarReset(
-    @Body() solicitarResetDto: SolicitarResetDto,
-  ): Promise<MensajeResponseDto> {
+  async solicitarReset(@Body() solicitarResetDto: SolicitarResetDto) {
     await this.authService.solicitarResetPassword(solicitarResetDto.email);
-
-    return {
-      mensaje: AUTH_MESSAGES.SUCCESS.RESET_SENT,
-    };
+    return this.success(null, AUTH_MESSAGES.SUCCESS.RESET_SENT);
   }
 
-  @Public()
+  // Public
   @Post('reset-password')
+  @Auditable({ tabla: 'usuarios', descripcion: 'Reset de contraseña' })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resetear contraseña con token' })
-  @ApiResponse({
-    status: 200,
-    description: 'Contraseña reseteada exitosamente',
-  })
-  @ApiResponse({ status: 400, description: 'Token inválido o expirado' })
-  async resetPassword(
-    @Body() resetPasswordDto: ResetPasswordDto,
-  ): Promise<MensajeResponseDto> {
+  @ApiResponse({ status: 200, description: 'Contraseña reseteada' })
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     await this.authService.resetearPassword(resetPasswordDto);
-
-    return {
-      mensaje: AUTH_MESSAGES.SUCCESS.PASSWORD_RESET,
-    };
+    return this.success(null, AUTH_MESSAGES.SUCCESS.PASSWORD_RESET);
   }
 
+  // Private
   // @Get('perfil')
   // @UseGuards(JwtAuthGuard)
   // @ApiBearerAuth()

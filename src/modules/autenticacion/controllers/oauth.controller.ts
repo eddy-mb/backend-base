@@ -4,8 +4,9 @@ import { Request, Response } from 'express';
 import { GoogleAuthGuard } from '../guards/google-auth.guard';
 import { OAuthService } from '../services/oauth.service';
 import { ConfiguracionService } from '../../configuracion/services/configuracion.service';
-import { Public } from '../decorators/public.decorator';
 import { GoogleProfile } from '../interfaces/auth.interfaces';
+
+// Todos los metodos deben ser publicos
 
 @ApiTags('OAuth')
 @Controller('auth')
@@ -15,7 +16,7 @@ export class OAuthController {
     private configuracionService: ConfiguracionService,
   ) {}
 
-  @Public()
+  // Public
   @Get('google')
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Iniciar autenticación con Google' })
@@ -24,7 +25,7 @@ export class OAuthController {
     // El guard maneja la redirección a Google
   }
 
-  @Public()
+  // Public
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Callback de Google OAuth' })

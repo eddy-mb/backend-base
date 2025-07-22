@@ -65,6 +65,7 @@ export const AUTH_MESSAGES = {
     EMAIL_VERIFIED: 'Email verificado exitosamente',
     PASSWORD_RESET: 'Contraseña reseteada exitosamente',
     LOGOUT: 'Sesión cerrada exitosamente',
+    LOGIN_SUCCESS: 'Has iniciado sesión correctamente.',
     VERIFICATION_SENT: 'Email de verificación enviado',
     RESET_SENT:
       'Si el email existe, recibirá instrucciones para resetear su contraseña.',

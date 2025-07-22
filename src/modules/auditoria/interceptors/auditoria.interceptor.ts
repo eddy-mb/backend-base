@@ -259,19 +259,39 @@ export class AuditoriaInterceptor implements NestInterceptor {
       return params.id.toString();
     }
 
-    // Intentar extraer ID de la respuesta (para operaciones CREATE)
-    if (this.esResponseObject(response)) {
-      // Respuesta directa
-      if (response.id) {
-        return response.id.toString();
+    // Estructuras específicas de autenticación y respuestas
+    if (this.esResponseAuth(response)) {
+      // Login: { data: { usuario: { id: 123 } } }
+      if (response.data?.usuario?.id) {
+        return response.data.usuario.id.toString();
       }
-      // Respuesta con wrapper data (módulo de respuestas)
-      if (response.data?.id) {
-        return response.data.id.toString();
+
+      // Login directo: { usuario: { id: 123 } }
+      if (response.usuario?.id) {
+        return response.usuario.id.toString();
       }
     }
 
-    return 'unknown';
+    // Respuestas estándar
+    if (this.esResponseObject(response)) {
+      // Respuesta estándar: { data: { id: 123 } }
+      if (response.data?.id) {
+        return response.data.id.toString();
+      }
+
+      // Respuesta directa: { id: 123 }
+      if (response.id) {
+        return response.id.toString();
+      }
+    }
+
+    // Si response es null/vacío, usar user ID del request autenticado
+    if (!response && request.user?.id) {
+      return request.user.id.toString();
+    }
+
+    // Fallback final: usuario autenticado o unknown
+    return request.user?.id?.toString() || 'unknown';
   }
 
   /**
@@ -283,6 +303,17 @@ export class AuditoriaInterceptor implements NestInterceptor {
       response !== undefined &&
       typeof response === 'object'
     );
+  }
+
+  /**
+   * Type guard específico para responses de autenticación
+   */
+  private esResponseAuth(response: unknown): response is {
+    data?: { usuario?: { id?: number | string } };
+    usuario?: { id?: number | string };
+    [key: string]: any;
+  } {
+    return this.esResponseObject(response);
   }
 
   /**

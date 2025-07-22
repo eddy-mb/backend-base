@@ -14,9 +14,7 @@ import { AUTH_CONSTANTS, AUTH_MESSAGES } from '../constants/auth.constants';
 import { RegistroDto } from '../dto/registro.dto';
 import { LoginDto } from '../dto/login.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
-import { AuthResponseDto } from '../dto/auth-response.dto';
 import { BusinessException } from '../../respuestas/exceptions/exceptions';
-import { Auditable } from '../../auditoria/decorators/auditable.decorator';
 import { Usuario } from '../entities/usuario.entity';
 
 @Injectable()
@@ -29,12 +27,7 @@ export class AuthService {
     private loggerService: LoggerService,
   ) {}
 
-  /**
-   * Registra nuevo usuario
-   */
-
   async registrarUsuario(datos: RegistroDto): Promise<Partial<Usuario>> {
-    // Verificar si el usuario ya existe
     const usuarioExistente = await this.usuarioRepository.buscarPorEmail(
       datos.email,
     );
@@ -42,10 +35,8 @@ export class AuthService {
       throw BusinessException.alreadyExists('Usuario', 'email', datos.email);
     }
 
-    // Hashear contraseña
     const hashedPassword = await PasswordUtil.hashPassword(datos.password);
 
-    // Crear usuario
     const usuario = await this.usuarioRepository.crear({
       email: datos.email,
       password: hashedPassword,
@@ -63,17 +54,12 @@ export class AuthService {
       email: datos.email,
       nombre: datos.nombre,
     });
-    const { id, email, nombre, estado } = usuario;
 
+    const { id, email, nombre, estado } = usuario;
     return { id, email, nombre, estado };
   }
 
-  /**
-   * Inicia sesión con credenciales
-   */
-  @Auditable({ tabla: 'usuarios', descripcion: 'Login de usuario' })
-  async iniciarSesion(datos: LoginDto, ip: string): Promise<AuthResponseDto> {
-    // Verificar rate limiting
+  async iniciarSesion(datos: LoginDto, ip: string) {
     const rateLimitKey = `${AUTH_CONSTANTS.REDIS_KEYS.LOGIN_ATTEMPTS}:${ip}`;
     const { limit, ttl } = AUTH_CONSTANTS.RATE_LIMITS.LOGIN;
     const puedeIntentar = await this.verificarLimiteVelocidad(
@@ -86,14 +72,12 @@ export class AuthService {
       );
     }
 
-    // Buscar usuario
     const usuario = await this.usuarioRepository.buscarParaAuth(datos.email);
     if (!usuario) {
       await this.incrementarIntentos(rateLimitKey, ttl);
       throw new UnauthorizedException(AUTH_MESSAGES.ERRORS.INVALID_CREDENTIALS);
     }
 
-    // Verificar contraseña
     const passwordValida = await PasswordUtil.comparePassword(
       datos.password,
       usuario.password,
@@ -102,8 +86,6 @@ export class AuthService {
       await this.incrementarIntentos(rateLimitKey, ttl);
       throw new UnauthorizedException(AUTH_MESSAGES.ERRORS.INVALID_CREDENTIALS);
     }
-
-    // Verificar que el usuario pueda iniciar sesión
 
     if (!usuario.registroActivo) {
       throw new BadRequestException(AUTH_MESSAGES.ERRORS.ACCOUNT_DELETED);
@@ -116,13 +98,8 @@ export class AuthService {
       throw new BadRequestException(AUTH_MESSAGES.ERRORS.ACCOUNT_INACTIVE);
     }
 
-    // Generar tokens
     const tokens = await this.jwtTokenService.generarTokens(usuario);
-
-    // Actualizar último login
     await this.usuarioRepository.actualizarUltimoLogin(usuario.id);
-
-    // Limpiar intentos de login
     await this.redisService.del(rateLimitKey);
 
     this.loggerService.logWithMeta('Usuario inició sesión', {
@@ -144,15 +121,9 @@ export class AuthService {
     };
   }
 
-  /**
-   * Cierra sesión del usuario
-   */
-  @Auditable({ tabla: 'usuarios', descripcion: 'Logout de usuario' })
   async cerrarSesion(userId: number, token: string): Promise<void> {
-    // Invalidar refresh token en BD
     await this.jwtTokenService.invalidarRefreshToken(userId);
 
-    // Agregar access token a blacklist en Redis
     const decoded = this.jwtTokenService.decodeToken(token);
     if (decoded && decoded.exp) {
       const ttl = decoded.exp - Math.floor(Date.now() / 1000);
@@ -166,9 +137,6 @@ export class AuthService {
     });
   }
 
-  /**
-   * Verifica email del usuario
-   */
   async verificarEmail(token: string): Promise<void> {
     const validacion = await this.tokenService.validarToken(
       token,
@@ -180,10 +148,7 @@ export class AuthService {
       );
     }
 
-    // Verificar usuario
     await this.usuarioRepository.verificarEmail(validacion.email);
-
-    // Marcar token como usado
     await this.tokenService.marcarTokenComoUsado(token);
 
     this.loggerService.logWithMeta('Email verificado', {
@@ -191,11 +156,7 @@ export class AuthService {
     });
   }
 
-  /**
-   * Solicita reset de contraseña
-   */
   async solicitarResetPassword(email: string): Promise<void> {
-    // Verificar rate limiting
     const rateLimitKey = `${AUTH_CONSTANTS.REDIS_KEYS.RESET_ATTEMPTS}:${email}`;
     const { limit, ttl } = AUTH_CONSTANTS.RATE_LIMITS.RESET_PASSWORD;
     const puedeIntentar = await this.verificarLimiteVelocidad(
@@ -206,29 +167,22 @@ export class AuthService {
       throw new BadRequestException(AUTH_MESSAGES.ERRORS.TOO_MANY_ATTEMPTS);
     }
 
-    // Verificar que el usuario existe
     const usuario = await this.usuarioRepository.buscarPorEmail(email);
     if (!usuario) {
-      // Por seguridad, no revelamos si el email existe
       return;
     }
 
-    // Incrementar intentos
     await this.incrementarIntentos(rateLimitKey, ttl);
 
     // Generar token de reset
     // const token = await this.tokenService.crearTokenReset(email);
 
-    // TODO: Enviar email de reset
+    // TODO: Enviar email de reset usando el servicio de comunicaciones
     // await this.comunicacionesService.enviarEmailReset(email, token);
 
     this.loggerService.logWithMeta('Reset de contraseña solicitado', { email });
   }
 
-  /**
-   * Resetea contraseña
-   */
-  @Auditable({ tabla: 'usuarios', descripcion: 'Reset de contraseña' })
   async resetearPassword(datos: ResetPasswordDto): Promise<void> {
     const validacion = await this.tokenService.validarToken(
       datos.token,
@@ -238,19 +192,13 @@ export class AuthService {
       throw new BadRequestException('Token de reset inválido o expirado');
     }
 
-    // Hashear nueva contraseña
     const hashedPassword = await PasswordUtil.hashPassword(datos.nuevaPassword);
-
-    // Actualizar contraseña
     await this.usuarioRepository.actualizarPassword(
       validacion.email,
       hashedPassword,
     );
-
-    // Marcar token como usado
     await this.tokenService.marcarTokenComoUsado(datos.token);
 
-    // Invalidar todas las sesiones del usuario
     const usuario = await this.usuarioRepository.buscarPorEmail(
       validacion.email,
     );
@@ -263,49 +211,35 @@ export class AuthService {
     });
   }
 
-  /**
-   * Reenvía email de verificación
-   */
   async reenviarVerificacion(email: string): Promise<void> {
-    // Verificar rate limiting
     const rateLimitKey = `resend_verification:${email}`;
-    const puedeIntentar = await this.verificarLimiteVelocidad(rateLimitKey, 3); // 3 por hora
+    const puedeIntentar = await this.verificarLimiteVelocidad(rateLimitKey, 3);
     if (!puedeIntentar) {
       throw new BadRequestException(
         'Demasiados intentos de reenvío. Intente más tarde.',
       );
     }
 
-    // Verificar que el usuario existe y no está verificado
     const usuario = await this.usuarioRepository.buscarPorEmail(email);
     if (!usuario || usuario.estaVerificado) {
       throw new BadRequestException('Email inválido o ya verificado');
     }
 
-    // Incrementar intentos
     await this.incrementarIntentos(rateLimitKey, 3600);
 
     // Generar nuevo token
     // const token = await this.tokenService.crearTokenVerificacion(email);
 
-    // TODO: Enviar email
+    // TODO: Enviar email de verificación usando el servicio de comunicaciones
     // await this.comunicacionesService.enviarEmailVerificacion(email, token);
 
     this.loggerService.logWithMeta('Verificación reenviada', { email });
   }
 
-  /**
-   * Renueva access token usando refresh token
-   */
   async renovarToken(refreshToken: string): Promise<string> {
     return this.jwtTokenService.renovarToken(refreshToken);
   }
 
-  // Métodos privados para Redis
-
-  /**
-   * Verifica límite de velocidad
-   */
   private async verificarLimiteVelocidad(
     key: string,
     limite: number,
@@ -320,13 +254,10 @@ export class AuthService {
         key,
         error: err,
       });
-      return true; // En caso de error, permitir la operación
+      return true;
     }
   }
 
-  /**
-   * Incrementa contador de intentos
-   */
   private async incrementarIntentos(key: string, ttl: number): Promise<void> {
     try {
       const intentos = await this.redisService.get(key);
@@ -341,9 +272,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Agrega token a blacklist
-   */
   private async agregarTokenABlacklist(
     token: string,
     ttl: number,
@@ -359,9 +287,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Verifica si token está en blacklist
-   */
   async estaTokenEnBlacklist(token: string): Promise<boolean> {
     try {
       const key = `${AUTH_CONSTANTS.REDIS_KEYS.BLACKLIST}:${token}`;
@@ -372,7 +297,7 @@ export class AuthService {
       this.loggerService.errorWithMeta('Error verificando blacklist', {
         error: err,
       });
-      return false; // En caso de error, no bloquear
+      return false;
     }
   }
 }
