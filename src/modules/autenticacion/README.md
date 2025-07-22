@@ -30,10 +30,9 @@ Módulo completo de autenticación JWT con verificación de email, recuperación
 ### Autenticación Básica
 
 - `POST /api/v1/auth/registro` - Registrar nuevo usuario
-- `POST /api/v1/auth/login` - Iniciar sesión
+- `POST /api/v1/auth/login` - Iniciar sesión  
 - `POST /api/v1/auth/logout` - Cerrar sesión
 - `POST /api/v1/auth/refresh` - Renovar access token
-- `GET /api/v1/auth/perfil` - Obtener perfil básico
 
 ### Verificación y Recuperación
 
@@ -53,7 +52,7 @@ Módulo completo de autenticación JWT con verificación de email, recuperación
 
 ```typescript
 @Controller('usuarios')
-export class UsuarioController {
+export class UsuarioController extends BaseController {
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -62,9 +61,8 @@ export class UsuarioController {
   }
 
   @Get('publico')
-  @Public() // Decorador para endpoints públicos (solo si se configura guard globalmente en main.ts)
   async endpointPublico() {
-    // Endpoint público
+    // Endpoint público (sin guard)
   }
 }
 ```
@@ -74,13 +72,9 @@ export class UsuarioController {
 ```typescript
 @Get('mi-perfil')
 @UseGuards(JwtAuthGuard)
-async obtenerMiPerfil(@GetUser() user: RequestUser) {
-  return { id: user.id, email: user.email };
-}
-
-// Solo obtener ID
-async method(@GetUser('id') userId: number) {
-  // usar userId
+async obtenerMiPerfil(@Req() request: RequestWithUser) {
+  const userId = this.getUser(request);
+  return { id: userId };
 }
 ```
 

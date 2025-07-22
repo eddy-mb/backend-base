@@ -15,11 +15,6 @@ export interface GoogleProfile {
   picture: string;
 }
 
-export interface RequestUser {
-  id: number;
-  email: string;
-}
-
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;

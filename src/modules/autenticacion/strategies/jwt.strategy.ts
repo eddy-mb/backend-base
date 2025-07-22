@@ -4,7 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfiguracionService } from '../../configuracion/services/configuracion.service';
 import { UsuarioRepository } from '../repositories/usuario.repository';
 import { AuthService } from '../services/auth.service';
-import { JwtPayload, RequestUser } from '../interfaces/auth.interfaces';
+import { JwtPayload } from '../interfaces/auth.interfaces';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -17,11 +17,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: configuracionService.seguridad.jwtSecret,
-      passReqToCallback: true, // Para acceder al request y extraer el token
+      passReqToCallback: true,
     });
   }
 
-  async validate(request: any, payload: JwtPayload): Promise<RequestUser> {
+  async validate(request: any, payload: JwtPayload) {
     // Extraer token del header
     const token = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
 
@@ -46,6 +46,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Usuario inactivo o no verificado');
     }
 
+    // Retornar datos del usuario para request.user
     return {
       id: usuario.id,
       email: usuario.email,
