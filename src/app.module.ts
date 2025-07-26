@@ -7,6 +7,7 @@ import { ResponseModule } from './modules/respuestas/response.module';
 import { LoggingModule } from './modules/logging/logging.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { AutenticacionModule } from './modules/autenticacion/autenticacion.module';
+import { AutorizacionModule } from './modules/autorizacion/autorizacion.module';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 
 @Module({
@@ -18,6 +19,7 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
     LoggingModule, // Módulo de logging estructurado
     AuditoriaModule, // Módulo de auditoría
     AutenticacionModule, // Módulo de autenticación JWT
+    AutorizacionModule, // Módulo de autorización RBAC
   ],
   controllers: [],
   providers: [
