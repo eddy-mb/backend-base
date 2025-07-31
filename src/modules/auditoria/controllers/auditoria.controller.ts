@@ -3,7 +3,6 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuditoriaService } from '../services/auditoria.service';
 import { AuditoriaQueryDto } from '../dto/auditoria.dto';
 import { BaseController } from '@/common';
-// import { UsePagination } from '@/modules/respuestas';
 
 @ApiTags('Auditoría')
 @Controller('auditoria')

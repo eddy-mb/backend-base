@@ -1,12 +1,13 @@
 import { Request } from 'express';
 
 /**
- * Request con usuario autenticado
+ * Request con usuario autenticado - Estándar industrial
  */
 export interface RequestWithUser extends Request {
   user?: {
-    id: number;
-    email: string;
-    idRol?: number;
+    id: string; // ID del usuario
+    email: string; // Email del usuario
+    roles?: string[]; // Array de códigos de rol (ej: ["ADMIN", "USER"])
+    [key: string]: any; // Extensible para propiedades adicionales
   };
 }

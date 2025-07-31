@@ -50,28 +50,32 @@ export abstract class BaseEntity {
   fechaEliminacion?: Date;
 
   @Column({
+    type: 'bigint',
     name: '_usuario_creacion',
     nullable: true,
-    comment: 'ID o email del usuario que creó el registro',
+    comment: 'ID del usuario que creó el registro',
   })
   @Index()
   usuarioCreacion?: string;
 
   @Column({
+    type: 'bigint',
     name: '_usuario_modificacion',
     nullable: true,
-    comment: 'ID o email del usuario que modificó el registro',
+    comment: 'ID  del usuario que modificó el registro',
   })
   usuarioModificacion?: string;
 
   @Column({
+    type: 'bigint',
     name: '_usuario_eliminacion',
     nullable: true,
-    comment: 'ID o email del usuario que eliminó el registro',
+    comment: 'ID del usuario que eliminó el registro',
   })
   usuarioEliminacion?: string;
 
   @Column({
+    type: 'boolean',
     name: '_is_active',
     default: true,
     comment: 'Indica si el registro está activo (true) o eliminado (false)',
@@ -80,10 +84,11 @@ export abstract class BaseEntity {
   isActive: boolean;
 
   @PrimaryGeneratedColumn({
+    type: 'bigint',
     name: 'id',
     comment: 'Clave primaria de la tabla',
   })
-  id: number;
+  id: string;
 
   /**
    * Verifica si el registro está activo
