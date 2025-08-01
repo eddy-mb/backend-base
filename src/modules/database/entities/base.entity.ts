@@ -47,7 +47,7 @@ export abstract class BaseEntity {
     comment: 'Fecha y hora de eliminación lógica (soft delete)',
   })
   @Index()
-  fechaEliminacion?: Date;
+  fechaEliminacion?: Date | null;
 
   @Column({
     type: 'bigint',
@@ -56,7 +56,7 @@ export abstract class BaseEntity {
     comment: 'ID del usuario que creó el registro',
   })
   @Index()
-  usuarioCreacion?: string;
+  usuarioCreacion?: string | null;
 
   @Column({
     type: 'bigint',
@@ -64,7 +64,7 @@ export abstract class BaseEntity {
     nullable: true,
     comment: 'ID  del usuario que modificó el registro',
   })
-  usuarioModificacion?: string;
+  usuarioModificacion?: string | null;
 
   @Column({
     type: 'bigint',
@@ -72,7 +72,7 @@ export abstract class BaseEntity {
     nullable: true,
     comment: 'ID del usuario que eliminó el registro',
   })
-  usuarioEliminacion?: string;
+  usuarioEliminacion?: string | null;
 
   @Column({
     type: 'boolean',
