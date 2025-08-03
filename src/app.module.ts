@@ -7,6 +7,7 @@ import { ResponseModule } from './modules/respuestas/response.module';
 import { LoggingModule } from './modules/logging/logging.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
+import { AutenticacionModule } from './modules/autenticacion/autenticacion.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UsuariosModule } from './modules/usuarios/usuarios.module';
     LoggingModule, // Módulo de logging estructurado
     AuditoriaModule, // Módulo de auditoría
     UsuariosModule, // Módulo de gestión de usuarios
+    AutenticacionModule, // Módulo de autenticación JWT
   ],
   controllers: [],
   providers: [],

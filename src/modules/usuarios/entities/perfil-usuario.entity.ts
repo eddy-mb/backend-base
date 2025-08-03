@@ -22,16 +22,18 @@ import { ConfiguracionUsuario } from '../interfaces/usuario.interface';
 @Entity({ name: 'perfiles_usuario', schema: process.env.DB_SCHEMA_USUARIOS })
 export class PerfilUsuario {
   // ==================== CAMPOS BÁSICOS ====================
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('increment', { name: 'id', type: 'bigint' })
   id: string;
 
   @CreateDateColumn({
+    name: 'fecha_creacion',
     type: 'timestamp with time zone',
     comment: 'Fecha de creación del perfil',
   })
   fechaCreacion: Date;
 
   @UpdateDateColumn({
+    name: 'fecha_modificacion',
     type: 'timestamp with time zone',
     comment: 'Fecha de última modificación del perfil',
   })
@@ -53,6 +55,7 @@ export class PerfilUsuario {
 
   // ==================== INFORMACIÓN PERSONAL ====================
   @Column({
+    name: 'apellidos',
     length: 100,
     nullable: true,
     comment: 'Apellidos del usuario',
@@ -60,6 +63,7 @@ export class PerfilUsuario {
   apellidos?: string;
 
   @Column({
+    name: 'telefono',
     length: 20,
     nullable: true,
     comment: 'Número de teléfono del usuario',
@@ -67,6 +71,7 @@ export class PerfilUsuario {
   telefono?: string;
 
   @Column({
+    name: 'fecha_nacimiento',
     type: 'date',
     nullable: true,
     comment: 'Fecha de nacimiento del usuario',
@@ -75,6 +80,7 @@ export class PerfilUsuario {
 
   // ==================== PERFIL Y PERSONALIZACIÓN ====================
   @Column({
+    name: 'avatar',
     type: 'varchar',
     length: 255,
     nullable: true,
@@ -83,6 +89,7 @@ export class PerfilUsuario {
   avatar?: string | null;
 
   @Column({
+    name: 'biografia',
     type: 'text',
     nullable: true,
     comment: 'Biografía o descripción personal del usuario',
@@ -90,6 +97,7 @@ export class PerfilUsuario {
   biografia?: string;
 
   @Column({
+    name: 'configuraciones',
     type: 'jsonb',
     default: () => `'{
       "notificacionesEmail": true,
@@ -109,6 +117,7 @@ export class PerfilUsuario {
 
   // ==================== LOCALIZACIÓN Y PREFERENCIAS ====================
   @Column({
+    name: 'zona_horaria',
     default: 'America/La_Paz',
     length: 50,
     comment: 'Zona horaria preferida del usuario',
@@ -116,6 +125,7 @@ export class PerfilUsuario {
   zonaHoraria: string;
 
   @Column({
+    name: 'idioma',
     default: 'es',
     length: 5,
     comment: 'Idioma preferido del usuario (código ISO)',

@@ -52,7 +52,7 @@ export class CreateAuditoriaDto {
   @IsOptional()
   @IsNumber()
   @IsPositive()
-  usuarioId?: number;
+  usuarioId?: string;
 
   @ApiPropertyOptional({
     description: 'Metadatos adicionales de la operación',

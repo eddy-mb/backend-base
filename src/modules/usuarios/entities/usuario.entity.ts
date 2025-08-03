@@ -14,6 +14,8 @@ import { EstadoUsuario } from '../enums/usuario.enum';
 export class Usuario extends BaseEntity {
   // ==================== DATOS DE AUTENTICACIÓN ====================
   @Column({
+    name: 'email',
+    type: 'varchar',
     unique: true,
     length: 255,
     comment: 'Email único del usuario para autenticación',
@@ -22,13 +24,18 @@ export class Usuario extends BaseEntity {
   email: string;
 
   @Column({
+    name: 'password',
+    type: 'varchar',
     length: 255,
-    comment: 'Hash de la contraseña del usuario',
+    nullable: true,
+    comment: 'Hash de la contraseña del usuario - NULL para usuarios OAuth',
   })
   @Exclude({ toPlainOnly: true })
-  password: string;
+  password: string | null;
 
   @Column({
+    name: 'nombre',
+    type: 'varchar',
     length: 100,
     comment: 'Nombre del usuario',
   })
@@ -36,6 +43,7 @@ export class Usuario extends BaseEntity {
 
   // ==================== ESTADO Y VERIFICACIÓN ====================
   @Column({
+    name: 'estado',
     type: 'enum',
     enum: EstadoUsuario,
     default: EstadoUsuario.PENDIENTE_VERIFICACION,
@@ -45,6 +53,7 @@ export class Usuario extends BaseEntity {
   estado: EstadoUsuario;
 
   @Column({
+    name: 'email_verificado',
     type: 'boolean',
     default: false,
     comment: 'Indica si el email del usuario ha sido verificado',
@@ -53,6 +62,7 @@ export class Usuario extends BaseEntity {
   emailVerificado: boolean;
 
   @Column({
+    name: 'fecha_verificacion',
     type: 'timestamp with time zone',
     nullable: true,
     comment: 'Fecha y hora de verificación del email',
@@ -61,14 +71,16 @@ export class Usuario extends BaseEntity {
 
   // ==================== TOKENS DE SEGURIDAD ====================
   @Column({
+    name: 'refresh_token',
     type: 'text',
     nullable: true,
     comment: 'Refresh token para renovación de JWT',
   })
   @Exclude({ toPlainOnly: true })
-  refreshToken?: string;
+  refreshToken?: string | null;
 
   @Column({
+    name: 'token_verificacion',
     type: 'varchar',
     length: 255,
     nullable: true,
@@ -78,6 +90,7 @@ export class Usuario extends BaseEntity {
   tokenVerificacion?: string | null;
 
   @Column({
+    name: 'token_recuperacion',
     type: 'varchar',
     length: 255,
     nullable: true,
@@ -88,6 +101,7 @@ export class Usuario extends BaseEntity {
 
   // ==================== METADATOS DE SEGURIDAD ====================
   @Column({
+    name: 'fecha_ultimo_login',
     type: 'timestamp with time zone',
     nullable: true,
     comment: 'Fecha y hora del último login exitoso',
@@ -95,6 +109,7 @@ export class Usuario extends BaseEntity {
   fechaUltimoLogin?: Date;
 
   @Column({
+    name: 'intentos_login',
     type: 'int',
     default: 0,
     comment: 'Número de intentos de login fallidos consecutivos',
@@ -102,6 +117,7 @@ export class Usuario extends BaseEntity {
   intentosLogin: number;
 
   @Column({
+    name: 'ultima_actividad',
     type: 'timestamp with time zone',
     nullable: true,
     comment: 'Fecha y hora de la última actividad del usuario',
@@ -109,6 +125,7 @@ export class Usuario extends BaseEntity {
   ultimaActividad?: Date;
 
   @Column({
+    name: 'ip_registro',
     type: 'inet',
     nullable: true,
     comment: 'Dirección IP desde la cual se registró el usuario',
@@ -116,11 +133,33 @@ export class Usuario extends BaseEntity {
   ipRegistro?: string;
 
   @Column({
+    name: 'user_agent_registro',
     type: 'text',
     nullable: true,
     comment: 'User Agent del navegador usado en el registro',
   })
   userAgentRegistro?: string;
+
+  // ==================== OAUTH PROVIDERS ====================
+  @Column({
+    name: 'google_id',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    comment: 'ID único del usuario en Google OAuth',
+  })
+  @Index({ where: 'google_id IS NOT NULL' })
+  googleId?: string;
+
+  @Column({
+    name: 'oauth_provider',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    comment: 'Proveedor OAuth utilizado (google, facebook, etc.)',
+  })
+  @Index({ where: 'oauth_provider IS NOT NULL' })
+  oauthProvider?: string;
 
   // ==================== RELACIONES ====================
   @OneToOne(() => PerfilUsuario, (perfil) => perfil.usuario, {
@@ -140,6 +179,20 @@ export class Usuario extends BaseEntity {
       this.isActive &&
       !this.fechaEliminacion
     );
+  }
+
+  /**
+   * Verifica si el usuario usa OAuth exclusivamente
+   */
+  esUsuarioOAuth(): boolean {
+    return this.password === null && !!this.oauthProvider;
+  }
+
+  /**
+   * Verifica si puede hacer login con contraseña
+   */
+  puedeLoginConPassword(): boolean {
+    return this.password !== null;
   }
 
   /**

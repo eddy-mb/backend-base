@@ -371,7 +371,7 @@ export class AuditoriaInterceptor implements NestInterceptor {
         tabla: options.tabla || contexto.modulo!,
         idRegistro,
         accion,
-        usuarioId: contexto.usuarioId,
+        usuarioId: contexto.usuarioId?.toString(),
         metadatos,
       });
     } catch (error) {
