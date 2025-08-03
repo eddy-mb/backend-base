@@ -27,8 +27,8 @@ export class AuditoriaLog {
   /**
    * Identificador único del log de auditoría
    */
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn({ name: 'id', type: 'bigint' })
+  id: string;
 
   /**
    * Fecha y hora exacta cuando se realizó la operación
@@ -41,6 +41,7 @@ export class AuditoriaLog {
    * Ejemplos: 'usuarios', 'archivos', 'configuracion_general'
    */
   @Column({
+    name: 'tabla',
     type: 'varchar',
     length: AUDITORIA_LIMITS.TABLA_MAX_LENGTH,
     nullable: false,
@@ -66,6 +67,7 @@ export class AuditoriaLog {
    * DELETE: Eliminación (lógica o física) de registro
    */
   @Column({
+    name: 'accion',
     type: 'enum',
     enum: ['CREATE', 'UPDATE', 'DELETE'],
     nullable: false,
@@ -78,10 +80,10 @@ export class AuditoriaLog {
    */
   @Column({
     name: 'usuario_id',
-    type: 'integer',
+    type: 'bigint',
     nullable: true,
   })
-  usuarioId?: number;
+  usuarioId?: string;
 
   /**
    * Metadatos adicionales de la operación en formato JSON
@@ -97,6 +99,7 @@ export class AuditoriaLog {
    * }
    */
   @Column({
+    name: 'metadatos',
     type: 'jsonb',
     nullable: true,
     comment: 'Metadatos adicionales de la operación en formato JSON',

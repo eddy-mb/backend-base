@@ -8,6 +8,6 @@ export interface RequestWithUser extends Request {
     id: string; // ID del usuario
     email: string; // Email del usuario
     roles?: string[]; // Array de códigos de rol (ej: ["ADMIN", "USER"])
-    [key: string]: any; // Extensible para propiedades adicionales
+    [key: string]: unknown; // Extensible para propiedades adicionales
   };
 }

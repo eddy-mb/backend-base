@@ -22,6 +22,7 @@ import { LoggerService } from '../../logging/services/logger.service';
 import { UsuarioRepository } from '../repositories/usuario.repository';
 import { PerfilUsuarioRepository } from '../repositories/perfil-usuario.repository';
 import { PASSWORD_CONFIG } from '../constants/usuarios.constants';
+import { CrearUsuarioOAuthDto } from '../dto/request/crear-usuario-oauth.dto';
 
 @Injectable()
 export class UsuariosService {
@@ -33,6 +34,92 @@ export class UsuariosService {
   ) {}
 
   // ==================== CRUD PRINCIPAL ====================
+
+  /**
+   * Buscar usuario por Google ID o email
+   */
+  async buscarPorGoogleIdOEmail(
+    googleId?: string,
+    email?: string,
+  ): Promise<Usuario | null> {
+    if (googleId) {
+      const usuario = await this.usuarioRepository.buscarPorGoogleId(googleId);
+      if (usuario) return usuario;
+    }
+    if (email) {
+      return this.usuarioRepository.buscarPorEmail(email);
+    }
+    return null;
+  }
+
+  /**
+   * Crear usuario OAuth (reutiliza crear() evitando duplicación)
+   */
+  async crearOAuth(
+    datos: CrearUsuarioOAuthDto,
+    ipRegistro?: string,
+    userAgent?: string,
+  ): Promise<Usuario> {
+    this.logger.log('Creando usuario OAuth', 'UsuariosService');
+
+    return this.dataSource.transaction(async (manager) => {
+      // Validaciones OAuth específicas
+      if (
+        datos.googleId &&
+        (await this.usuarioRepository.existeGoogleId(datos.googleId))
+      ) {
+        throw new ConflictException('Ya existe un usuario con este Google ID');
+      }
+
+      // Crear usuario sin password usando método del repositorio
+      const usuarioCreado = await this.usuarioRepository.crear(
+        {
+          email: datos.email,
+          nombre: datos.nombre,
+          googleId: datos.googleId,
+          oauthProvider: datos.oauthProvider,
+          estado: EstadoUsuario.ACTIVO, // OAuth pre-verificado
+          emailVerificado: true,
+          fechaVerificacion: new Date(),
+          ipRegistro,
+          userAgentRegistro: userAgent,
+        },
+        manager,
+      );
+
+      // Crear perfil usando repositorio existente
+      await this.perfilRepository.crear(
+        {
+          usuarioId: usuarioCreado.id,
+          avatar: datos.avatar,
+          configuraciones: this.getConfiguracionPorDefecto(),
+        },
+        manager,
+      );
+
+      this.logger.log(
+        `Usuario OAuth creado: ${usuarioCreado.id} (${datos.oauthProvider})`,
+        'UsuariosService',
+      );
+
+      return usuarioCreado;
+    });
+  }
+
+  private getConfiguracionPorDefecto() {
+    return {
+      notificacionesEmail: true,
+      notificacionesWeb: true,
+      temaOscuro: false,
+      mostrarAvatar: true,
+      perfilPublico: false,
+      configuracionPrivacidad: {
+        mostrarEmail: false,
+        mostrarTelefono: false,
+        mostrarFechaNacimiento: false,
+      },
+    };
+  }
 
   async crear(
     datos: CrearUsuarioDto,
@@ -203,7 +290,7 @@ export class UsuariosService {
       );
     }
 
-    const esValido = await bcrypt.compare(password, usuario.password);
+    const esValido = await bcrypt.compare(password, usuario.password!);
     if (!esValido) {
       await this.usuarioRepository.incrementarIntentos(usuario.id);
       return null;
@@ -293,7 +380,7 @@ export class UsuariosService {
 
     const esValido = await bcrypt.compare(
       datos.passwordActual,
-      usuario.password,
+      usuario.password!,
     );
     if (!esValido) {
       throw new BadRequestException('La contraseña actual es incorrecta');
@@ -303,7 +390,10 @@ export class UsuariosService {
       throw new BadRequestException('Las contraseñas no coinciden');
     }
 
-    const esMisma = await bcrypt.compare(datos.passwordNuevo, usuario.password);
+    const esMisma = await bcrypt.compare(
+      datos.passwordNuevo,
+      usuario.password!,
+    );
     if (esMisma) {
       throw new BadRequestException('La nueva contraseña debe ser diferente');
     }
@@ -365,6 +455,76 @@ export class UsuariosService {
 
     this.logger.log(`Usuario restaurado: ${id}`, 'UsuariosService');
     return this.buscarPorId(id);
+  }
+
+  // ==================== MÉTODOS PARA AUTENTICACIÓN ====================
+
+  async actualizarRefreshToken(
+    id: string,
+    refreshToken: string,
+  ): Promise<void> {
+    await this.usuarioRepository.actualizar(id, {
+      refreshToken,
+      ultimaActividad: new Date(),
+      usuarioModificacion: id,
+    });
+  }
+
+  async limpiarRefreshToken(id: string): Promise<void> {
+    await this.usuarioRepository.actualizar(id, {
+      refreshToken: null,
+      usuarioModificacion: id,
+    });
+  }
+
+  async actualizarUltimaActividad(id: string): Promise<void> {
+    await this.usuarioRepository.actualizar(id, {
+      ultimaActividad: new Date(),
+      usuarioModificacion: id,
+    });
+  }
+
+  async generarTokenRecuperacion(id: string): Promise<void> {
+    const tokenRecuperacion = uuidv4();
+    await this.usuarioRepository.actualizar(id, {
+      tokenRecuperacion,
+      usuarioModificacion: 'sistema',
+    });
+  }
+
+  async buscarPorTokenRecuperacion(token: string): Promise<Usuario | null> {
+    return await this.usuarioRepository.buscarPorTokenRecuperacion(token);
+  }
+
+  async confirmarPasswordConToken(
+    token: string,
+    nuevaPassword: string,
+  ): Promise<void> {
+    const usuario = await this.buscarPorTokenRecuperacion(token);
+
+    if (!usuario) {
+      throw new BadRequestException(
+        'Token de recuperación inválido o expirado',
+      );
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      await this.usuarioRepository.actualizar(
+        usuario.id,
+        {
+          password: await this.hashearPassword(nuevaPassword),
+          tokenRecuperacion: null,
+          refreshToken: null,
+          usuarioModificacion: usuario.id,
+        },
+        manager,
+      );
+
+      this.logger.log(
+        `Contraseña cambiada con token: ${usuario.id}`,
+        'UsuariosService',
+      );
+    });
   }
 
   // ==================== MÉTODOS PRIVADOS ====================
