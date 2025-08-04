@@ -32,7 +32,6 @@ import { AvatarService } from '../services/avatar.service';
 import { CrearUsuarioDto } from '../dto/request/crear-usuario.dto';
 import { ActualizarPerfilDto } from '../dto/request/perfil.dto';
 import {
-  VerificarEmailDto,
   CambiarPasswordDto,
   FiltrosUsuarioDto,
   CambiarEstadoUsuarioDto,
@@ -48,7 +47,7 @@ import {
 import { ValidacionAvatarPipe } from '../pipes/validacion-avatar.pipe';
 import { MENSAJES } from '../constants/usuarios.constants';
 
-@Controller('api/v1/usuarios')
+@Controller('usuarios')
 export class UsuariosController extends BaseController {
   constructor(
     private readonly usuariosService: UsuariosService,
@@ -74,20 +73,6 @@ export class UsuariosController extends BaseController {
     return this.created(
       plainToInstance(UsuarioResponseDto, usuario),
       MENSAJES.USUARIO_CREADO,
-    );
-  }
-
-  @Post('verificar-email')
-  @HttpCode(HttpStatus.OK)
-  @ApiTags('Usuarios - Públicos')
-  @ApiOperation({ summary: 'Verificar email de usuario' })
-  @ApiResponse({ status: 200, type: UsuarioResponseDto })
-  async verificarEmail(@Body() datos: VerificarEmailDto) {
-    const usuario = await this.usuariosService.verificarEmail(datos.token);
-
-    return this.success(
-      plainToInstance(UsuarioResponseDto, usuario),
-      MENSAJES.EMAIL_VERIFICADO,
     );
   }
 

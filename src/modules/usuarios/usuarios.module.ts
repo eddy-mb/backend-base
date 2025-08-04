@@ -21,14 +21,14 @@ import { UsuariosController } from './controllers/usuarios.controller';
 // Módulos de dependencias
 import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { LoggingModule } from '../logging/logging.module';
-import { createMulterOptions } from '@/config/upload.config';
+import { createMulterOptions } from '../../config/upload.config';
 import { AVATAR_CONFIG } from './constants/usuarios.constants';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Usuario, PerfilUsuario]),
 
-    // Multer con configuración unificada desde AVATAR_CONFIG
+    // Multer con configuración unificada
     MulterModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>

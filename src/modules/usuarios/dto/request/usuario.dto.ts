@@ -47,16 +47,6 @@ export class CambiarPasswordDto {
   confirmarPassword: string;
 }
 
-export class VerificarEmailDto {
-  @ApiProperty({
-    description: 'Token de verificación de email',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-  })
-  @IsString({ message: 'El token debe ser una cadena de texto' })
-  @IsNotEmpty({ message: 'El token es requerido' })
-  token: string;
-}
-
 export class CambiarEstadoUsuarioDto {
   @ApiProperty({
     description: 'Nuevo estado del usuario',
