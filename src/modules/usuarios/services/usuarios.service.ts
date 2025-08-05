@@ -349,10 +349,6 @@ export class UsuariosService {
       throw new BadRequestException('La contraseña actual es incorrecta');
     }
 
-    if (datos.passwordNuevo !== datos.confirmarPassword) {
-      throw new BadRequestException('Las contraseñas no coinciden');
-    }
-
     const esMisma = await bcrypt.compare(
       datos.passwordNuevo,
       usuario.password!,
@@ -367,21 +363,6 @@ export class UsuariosService {
     });
 
     this.logger.log(`Contraseña cambiada: ${id}`, 'UsuariosService');
-  }
-
-  async cambiarPasswordDirecto(
-    id: string,
-    hashedPassword: string,
-  ): Promise<void> {
-    await this.usuarioRepository.actualizar(id, {
-      password: hashedPassword,
-      usuarioModificacion: 'sistema',
-    });
-
-    this.logger.log(
-      `Contraseña cambiada directamente: ${id}`,
-      'UsuariosService',
-    );
   }
 
   // ==================== BÚSQUEDA Y LISTADO ====================
@@ -432,6 +413,38 @@ export class UsuariosService {
 
     this.logger.log(`Usuario restaurado: ${id}`, 'UsuariosService');
     return this.buscarPorId(id);
+  }
+
+  // ==================== MÉTODOS PARA AUTENTICACIÓN ====================
+
+  async cambiarPasswordDirecto(
+    id: string,
+    hashedPassword: string,
+  ): Promise<void> {
+    await this.usuarioRepository.actualizar(id, {
+      password: hashedPassword,
+      usuarioModificacion: 'sistema',
+    });
+
+    this.logger.log(
+      `Contraseña cambiada directamente: ${id}`,
+      'UsuariosService',
+    );
+  }
+
+  /**
+   * Verificar email directamente (para tokens de verificación)
+   * Bypasea validaciones complejas y actualiza directamente
+   */
+  async verificarEmailDirecto(id: string): Promise<void> {
+    await this.usuarioRepository.actualizar(id, {
+      emailVerificado: true,
+      fechaVerificacion: new Date(),
+      estado: EstadoUsuario.ACTIVO,
+      usuarioModificacion: 'sistema',
+    });
+
+    this.logger.log(`Email verificado directamente: ${id}`, 'UsuariosService');
   }
 
   // ==================== MÉTODOS PRIVADOS ====================

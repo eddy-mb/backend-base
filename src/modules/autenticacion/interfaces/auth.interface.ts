@@ -77,3 +77,11 @@ export interface TokenValidationResult {
   payload?: JwtPayload;
   error?: string;
 }
+
+/**
+ * Información del request (IP, User-Agent)
+ */
+export interface RequestInfoData {
+  ip: string;
+  userAgent: string;
+}

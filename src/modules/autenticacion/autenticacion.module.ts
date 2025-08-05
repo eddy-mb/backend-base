@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Módulos dependientes
 import { UsuariosModule } from '../usuarios/usuarios.module';
@@ -10,10 +11,17 @@ import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { AuditoriaModule } from '../auditoria/auditoria.module';
 import { LoggingModule } from '../logging/logging.module';
 
+// Entidades
+import { TokenUsuario } from './entities/token-usuario.entity';
+
 // Servicios
 import { AuthService } from './services/auth.service';
 import { JwtTokenService } from './services/jwt-token.service';
+import { TokenService } from './services/token.service';
 import { OAuthService } from './services/oauth.service';
+
+// Repositorios
+import { TokenUsuarioRepository } from './repositories/token-usuario.repository';
 
 // Controladores
 import { AuthController } from './controllers/auth.controller';
@@ -48,6 +56,9 @@ import { ConfiguracionService } from '../configuracion/services/configuracion.se
     AuditoriaModule,
     LoggingModule,
 
+    // Registro de entidades
+    TypeOrmModule.forFeature([TokenUsuario]),
+
     // Passport para estrategias de autenticación
     PassportModule.register({
       defaultStrategy: 'jwt',
@@ -69,7 +80,7 @@ import { ConfiguracionService } from '../configuracion/services/configuracion.se
       inject: [ConfiguracionService],
     }),
 
-    // Throttler para rate limiting con Redis storage
+    // Throttler para rate limiting
     ThrottlerModule.forRootAsync({
       useFactory: (configuracionService: ConfiguracionService) => {
         const config = configuracionService.seguridad;
@@ -81,8 +92,6 @@ import { ConfiguracionService } from '../configuracion/services/configuracion.se
               limit: config.rateLimitMax,
             },
           ],
-          // TODO: Configurar Redis storage cuando esté disponible
-          // storage: new ThrottlerStorageRedisService(redisService),
         };
       },
       inject: [ConfiguracionService],
@@ -95,7 +104,11 @@ import { ConfiguracionService } from '../configuracion/services/configuracion.se
     // Servicios principales
     AuthService,
     JwtTokenService,
+    TokenService,
     OAuthService,
+
+    // Repositorios
+    TokenUsuarioRepository,
 
     // Estrategias de Passport
     JwtStrategy,
@@ -109,6 +122,7 @@ import { ConfiguracionService } from '../configuracion/services/configuracion.se
     // Exportar para uso en otros módulos
     AuthService,
     JwtTokenService,
+    TokenService,
     OAuthService,
     JwtAuthGuard,
 

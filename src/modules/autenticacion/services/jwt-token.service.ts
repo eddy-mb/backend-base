@@ -3,6 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import { RedisService } from '../../redis/services/redis.service';
 import { ConfiguracionService } from '../../configuracion/services/configuracion.service';
 import { LoggerService } from '../../logging/services/logger.service';
+import { TokenService } from './token.service';
+import { TipoToken } from '../enums/autenticacion.enum';
 import {
   JwtPayload,
   TokenValidationResult,
@@ -15,6 +17,7 @@ export class JwtTokenService {
     private readonly redisService: RedisService,
     private readonly configuracionService: ConfiguracionService,
     private readonly logger: LoggerService,
+    private readonly tokenService: TokenService,
   ) {}
 
   /**
@@ -99,15 +102,26 @@ export class JwtTokenService {
 
   /**
    * Renueva un access token usando un refresh token válido
+   * CORREGIDO: Integra validación JWT + Base de Datos
    */
   async renovarAccessToken(refreshToken: string): Promise<{
     accessToken: string;
     expiresIn: number;
   }> {
+    // 1. Validar JWT estructura y firma
     const validation = await this.validarToken(refreshToken, 'refresh');
-
     if (!validation.isValid || !validation.payload) {
       throw new UnauthorizedException('Refresh token inválido');
+    }
+
+    // 2. ✅ NUEVO: Validar en base de datos TokenUsuario
+    const tokenEntity = await this.tokenService.validarToken(
+      refreshToken,
+      TipoToken.REFRESH,
+    );
+
+    if (!tokenEntity) {
+      throw new UnauthorizedException('Token revocado o no encontrado');
     }
 
     const { sub: userId, email } = validation.payload;
@@ -137,19 +151,25 @@ export class JwtTokenService {
 
   /**
    * Agrega un token a la blacklist en Redis
+   * MEJORADO: Incluye userId para invalidación masiva
    */
   async agregarABlacklist(token: string): Promise<void> {
     try {
-      // Decodificar sin verificar para obtener la expiración
       const decoded = this.jwtService.decode<JwtPayload>(token);
 
-      if (decoded?.exp) {
-        // TTL en segundos hasta que expire el token
+      if (decoded?.exp && decoded?.sub) {
         const ttl = decoded.exp - Math.floor(Date.now() / 1000);
 
         if (ttl > 0) {
-          const key = `blacklist:${this.generateTokenHash(token)}`;
-          await this.redisService.set(key, '1', ttl);
+          const tokenHash = this.generateTokenHash(token);
+
+          // Blacklist individual
+          const blacklistKey = `blacklist:${tokenHash}`;
+          await this.redisService.set(blacklistKey, '1', ttl);
+
+          // ✅ NUEVO: Índice por usuario para invalidación masiva
+          const userTokenKey = `user_tokens:${decoded.sub}:${tokenHash}`;
+          await this.redisService.set(userTokenKey, '1', ttl);
 
           this.logger.log(
             `Token agregado a blacklist: ${decoded.sub}`,
@@ -183,22 +203,26 @@ export class JwtTokenService {
   }
 
   /**
-   * Invalida todos los refresh tokens de un usuario
+   * Invalida todos los access tokens de un usuario (blacklist Redis)
    */
   async invalidarTodosLosTokens(userId: string): Promise<void> {
     try {
-      // Pattern para buscar tokens del usuario
       const pattern = `user_tokens:${userId}:*`;
       const keys = await this.redisService.keys(pattern);
 
       if (keys.length > 0) {
         await Promise.all(keys.map((key) => this.redisService.del(key)));
-      }
 
-      this.logger.log(
-        `Tokens invalidados para usuario: ${userId}`,
-        'JwtTokenService',
-      );
+        this.logger.log(
+          `${keys.length} tokens access invalidados para usuario: ${userId}`,
+          'JwtTokenService',
+        );
+      } else {
+        this.logger.log(
+          `No hay tokens access activos para usuario: ${userId}`,
+          'JwtTokenService',
+        );
+      }
     } catch (error) {
       this.logger.error(
         `Error al invalidar tokens: ${error instanceof Error ? error.message : 'Error desconocido'}`,

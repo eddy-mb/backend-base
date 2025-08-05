@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 import {
   LoginDto,
+  VerificarEmailDto,
   RenovarTokenDto,
   RecuperarPasswordDto,
   ConfirmarPasswordDto,
@@ -34,6 +35,8 @@ import {
 import { RequestInfo } from '../decorators/request-info.decorator';
 import { RequestWithUser } from '../../../common/interfaces/request.interface';
 import { Auditable, AuditableCritical } from '../../auditoria';
+import { CrearUsuarioDto } from '@/modules/usuarios';
+import { RequestInfoData } from '../interfaces/auth.interface';
 
 /**
  * Controlador de Autenticación Principal
@@ -46,16 +49,55 @@ export class AuthController extends BaseController {
     super();
   }
 
+  @Post('registro')
+  @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: 5, ttl: 3600000 } })
+  @Auditable({ tabla: 'usuarios', descripcion: 'Registro de usuario' })
+  @ApiOperation({ summary: 'Registrar nuevo usuario' })
+  @ApiResponse({ status: 201, type: MessageResponseDto })
+  async registrarUsuario(
+    @Body() datos: CrearUsuarioDto,
+    @RequestInfo() requestInfo: RequestInfoData,
+  ) {
+    const usuario = await this.authService.registrarUsuario(
+      datos,
+      requestInfo.ip,
+      requestInfo.userAgent,
+    );
+
+    return this.created(
+      { id: usuario.id, email: usuario.email, nombre: usuario.nombre },
+      'Usuario registrado exitosamente. Revise su email para verificar la cuenta.',
+    );
+  }
+
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Auditable({ tabla: 'usuarios', descripcion: 'Login con credenciales' })
   @ApiOperation({ summary: 'Iniciar sesión' })
   @ApiResponse({ status: 200, type: AuthResponseDto })
-  async login(@Body() loginDto: LoginDto) {
-    const authResponse = await this.authService.login(loginDto);
+  async login(
+    @Body() loginDto: LoginDto,
+    @RequestInfo() requestInfo: RequestInfoData,
+  ) {
+    const authResponse = await this.authService.login(loginDto, requestInfo);
 
     return this.success(authResponse, 'Login exitoso');
+  }
+
+  @Post('verificar-email')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Auditable({ tabla: 'usuarios', descripcion: 'Verificación de email' })
+  @ApiOperation({ summary: 'Verificar email de usuario' })
+  @ApiResponse({ status: 200, type: MessageResponseDto })
+  async verificarEmail(@Body() verificarEmailDto: VerificarEmailDto) {
+    await this.authService.verificarEmail(verificarEmailDto);
+    return this.success(
+      null,
+      'Email verificado exitosamente. Su cuenta está ahora activa.',
+    );
   }
 
   @Post('renovar-token')
@@ -110,8 +152,14 @@ export class AuthController extends BaseController {
   })
   @ApiOperation({ summary: 'Solicitar recuperación de contraseña' })
   @ApiResponse({ status: 200, type: MessageResponseDto })
-  async recuperarPassword(@Body() recuperarPasswordDto: RecuperarPasswordDto) {
-    await this.authService.solicitarRecuperacionPassword(recuperarPasswordDto);
+  async recuperarPassword(
+    @Body() recuperarPasswordDto: RecuperarPasswordDto,
+    @RequestInfo() requestInfo: RequestInfoData,
+  ) {
+    await this.authService.solicitarRecuperacionPassword(
+      recuperarPasswordDto,
+      requestInfo,
+    );
 
     return this.success(
       null,
