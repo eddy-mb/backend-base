@@ -156,4 +156,7 @@ export class RolesService {
       .filter((rol) => rol?.isActive);
     return roles;
   }
+  async obtenerCodigosRolesUsuario(usuarioId: string): Promise<string[]> {
+    return this.usuarioRolRepository.getCodigosRolesByUsuarioId(usuarioId);
+  }
 }

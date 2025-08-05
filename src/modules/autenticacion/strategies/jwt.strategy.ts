@@ -4,8 +4,8 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfiguracionService } from '../../configuracion/services/configuracion.service';
 import { AuthService } from '../services/auth.service';
 import { JwtTokenService } from '../services/jwt-token.service';
+import { RolesService } from '../../autorizacion/services/roles.service';
 import { JwtPayload } from '../interfaces/auth.interface';
-import { Usuario } from '../../usuarios/entities/usuario.entity';
 
 /**
  * Estrategia JWT para validación de tokens de acceso
@@ -16,28 +16,25 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private readonly configuracionService: ConfiguracionService,
     private readonly authService: AuthService,
     private readonly jwtTokenService: JwtTokenService,
+    private readonly rolesService: RolesService, // Nueva dependencia
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: configuracionService.seguridad.jwtSecret,
-      passReqToCallback: true, // Para acceder al request en validate
+      passReqToCallback: true,
     });
   }
 
   /**
-   * Validación del payload JWT
-   * Se ejecuta automáticamente cuando se valida un token
+   * Validación del payload JWT con roles incluidos
    */
-  async validate(request: any, payload: JwtPayload): Promise<Usuario> {
-    // Verificar que sea un access token
+  async validate(request: any, payload: JwtPayload) {
     if (payload.type !== 'access') {
       throw new UnauthorizedException('Token type inválido');
     }
 
-    // Extraer token del header para verificar blacklist
     const token = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
-
     if (token) {
       const estaEnBlacklist = await this.jwtTokenService.estaEnBlacklist(token);
       if (estaEnBlacklist) {
@@ -45,14 +42,24 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       }
     }
 
-    // Validar usuario usando AuthService
     const usuario = await this.authService.validarUsuarioPorId(payload.sub);
-
     if (!usuario) {
-      throw new UnauthorizedException('Usuario no válido o inactivo');
+      throw new UnauthorizedException(
+        'Acceso denegado: usuario inexistente o inactivo',
+      );
     }
 
-    // El usuario se agrega automáticamente al request.user
-    return usuario;
+    // Obtener roles del usuario para autorización
+    const roles = await this.rolesService.obtenerCodigosRolesUsuario(
+      usuario.id,
+    );
+
+    // Retornar usuario con roles para CasbinGuard
+    return {
+      id: usuario.id,
+      nombre: usuario.nombre,
+      email: usuario.email,
+      roles,
+    };
   }
 }

@@ -45,4 +45,18 @@ export class UsuarioRolRepository {
       },
     );
   }
+
+  async getCodigosRolesByUsuarioId(usuarioId: string): Promise<string[]> {
+    const usuarioRoles: { codigo: string }[] = await this.repository
+      .createQueryBuilder('ur')
+      .innerJoin('ur.rol', 'rol')
+      .select('rol.codigo')
+      .where('ur.usuarioId = :usuarioId', { usuarioId })
+      .andWhere('ur._is_active = true')
+      .andWhere('rol._is_active = true')
+      .andWhere('(ur.fecha_expiracion IS NULL OR ur.fecha_expiracion > NOW())')
+      .getRawMany();
+
+    return usuarioRoles.map((ur) => ur.codigo);
+  }
 }
