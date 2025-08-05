@@ -8,6 +8,7 @@ import { LoggingModule } from './modules/logging/logging.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { AutenticacionModule } from './modules/autenticacion/autenticacion.module';
+import { AutorizacionModule } from './modules/autorizacion/autorizacion.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AutenticacionModule } from './modules/autenticacion/autenticacion.modul
     AuditoriaModule, // Módulo de auditoría
     UsuariosModule, // Módulo de gestión de usuarios
     AutenticacionModule, // Módulo de autenticación JWT
+    AutorizacionModule, // Módulo de autorización RBAC con Casbin
   ],
   controllers: [],
   providers: [],

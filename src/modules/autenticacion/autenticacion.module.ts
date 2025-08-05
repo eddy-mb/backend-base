@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -34,39 +34,25 @@ import { GoogleStrategy } from './strategies/google.strategy';
 
 // Configuración
 import { ConfiguracionService } from '../configuracion/services/configuracion.service';
+import { AutorizacionModule } from '../autorizacion/autorizacion.module';
 
-/**
- * Módulo de Autenticación
- *
- * Proporciona:
- * - Sistema completo de autenticación JWT
- * - Login/logout con blacklist en Redis
- * - Recuperación de contraseña
- * - OAuth Google
- * - Rate limiting
- * - Guards reutilizables
- * - Auditoría automática de eventos de seguridad
- */
 @Module({
   imports: [
-    // Módulos base requeridos
     UsuariosModule,
     RedisModule,
     ConfiguracionModule,
     AuditoriaModule,
     LoggingModule,
+    forwardRef(() => AutorizacionModule),
 
-    // Registro de entidades
     TypeOrmModule.forFeature([TokenUsuario]),
 
-    // Passport para estrategias de autenticación
     PassportModule.register({
       defaultStrategy: 'jwt',
       property: 'user',
       session: false,
     }),
 
-    // JWT Module con configuración dinámica
     JwtModule.registerAsync({
       useFactory: (configuracionService: ConfiguracionService) => {
         const config = configuracionService.seguridad;
@@ -80,7 +66,6 @@ import { ConfiguracionService } from '../configuracion/services/configuracion.se
       inject: [ConfiguracionService],
     }),
 
-    // Throttler para rate limiting
     ThrottlerModule.forRootAsync({
       useFactory: (configuracionService: ConfiguracionService) => {
         const config = configuracionService.seguridad;
@@ -101,32 +86,22 @@ import { ConfiguracionService } from '../configuracion/services/configuracion.se
   controllers: [AuthController, OAuthController],
 
   providers: [
-    // Servicios principales
     AuthService,
     JwtTokenService,
     TokenService,
     OAuthService,
-
-    // Repositorios
     TokenUsuarioRepository,
-
-    // Estrategias de Passport
     JwtStrategy,
     GoogleStrategy,
-
-    // Guards
     JwtAuthGuard,
   ],
 
   exports: [
-    // Exportar para uso en otros módulos
     AuthService,
     JwtTokenService,
     TokenService,
     OAuthService,
     JwtAuthGuard,
-
-    // Exportar JwtModule para que otros módulos puedan usar JwtService
     JwtModule,
   ],
 })
