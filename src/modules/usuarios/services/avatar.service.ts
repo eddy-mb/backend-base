@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -32,45 +28,6 @@ export class AvatarService {
     void this.crearDirectorioSiNoExiste();
   }
 
-  // ==================== VALIDACIÓN DE ARCHIVOS ====================
-
-  validarArchivo(archivo: Express.Multer.File): void {
-    // Validar tipo MIME
-    if (
-      !(AVATAR_CONFIG.TIPOS_PERMITIDOS as readonly string[]).includes(
-        archivo.mimetype,
-      )
-    ) {
-      throw new BadRequestException(
-        `Tipo de archivo no permitido. Tipos válidos: ${AVATAR_CONFIG.TIPOS_PERMITIDOS.join(', ')}`,
-      );
-    }
-
-    // Validar tamaño
-    if (archivo.size > AVATAR_CONFIG.TAMANO_MAXIMO) {
-      throw new BadRequestException(
-        `El archivo es demasiado grande. Tamaño máximo: ${AVATAR_CONFIG.TAMANO_MAXIMO / 1024 / 1024}MB`,
-      );
-    }
-
-    // Validar extensión
-    const extension = this.obtenerExtension(archivo.originalname);
-    if (
-      !(AVATAR_CONFIG.EXTENSIONES_PERMITIDAS as readonly string[]).includes(
-        extension.toLowerCase(),
-      )
-    ) {
-      throw new BadRequestException(
-        `Extensión de archivo no permitida. Extensiones válidas: ${AVATAR_CONFIG.EXTENSIONES_PERMITIDAS.join(', ')}`,
-      );
-    }
-
-    // Validar header de imagen
-    if (!this.esImagenValida(archivo.buffer)) {
-      throw new BadRequestException('El archivo no es una imagen válida');
-    }
-  }
-
   // ==================== GESTIÓN DE ARCHIVOS ====================
 
   async guardarAvatar(
@@ -83,8 +40,7 @@ export class AvatarService {
     );
 
     try {
-      this.validarArchivo(archivo);
-
+      // La validación se hace en el pipe, aquí solo procesamos
       const extension = this.obtenerExtension(archivo.originalname);
       const nombreArchivo = this.generarNombreUnico(usuarioId, extension);
       const rutaCompleta = join(this.directorioAvatares, nombreArchivo);
@@ -105,7 +61,6 @@ export class AvatarService {
         );
       }
 
-      if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException(
         'Error interno al procesar el avatar',
       );
@@ -127,10 +82,7 @@ export class AvatarService {
           'AvatarService',
         );
       }
-
-      throw new InternalServerErrorException(
-        'Error interno al eliminar el avatar',
-      );
+      // No lanzar error si el archivo no existe, es aceptable
     }
   }
 
@@ -165,7 +117,10 @@ export class AvatarService {
         eliminados++;
       }
 
-      this.logger.log(`Avatares eliminados: ${eliminados}`, 'AvatarService');
+      this.logger.log(
+        `Avatares huérfanos eliminados: ${eliminados}`,
+        'AvatarService',
+      );
       return eliminados;
     } catch (error) {
       if (error instanceof Error) {
@@ -212,34 +167,6 @@ export class AvatarService {
   private obtenerExtension(nombreArchivo: string): string {
     const puntoIndex = nombreArchivo.lastIndexOf('.');
     return puntoIndex !== -1 ? nombreArchivo.substring(puntoIndex) : '';
-  }
-
-  private esImagenValida(buffer: Buffer): boolean {
-    if (buffer.length < 4) return false;
-
-    const header = buffer.subarray(0, 4);
-
-    // JPEG: FF D8 FF
-    if (header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff)
-      return true;
-
-    // PNG: 89 50 4E 47
-    if (
-      header[0] === 0x89 &&
-      header[1] === 0x50 &&
-      header[2] === 0x4e &&
-      header[3] === 0x47
-    )
-      return true;
-
-    // WebP: RIFF + WEBP
-    if (buffer.length >= 12) {
-      const riff = buffer.subarray(0, 4);
-      const webp = buffer.subarray(8, 12);
-      if (riff.toString() === 'RIFF' && webp.toString() === 'WEBP') return true;
-    }
-
-    return false;
   }
 
   private esNombreAvatarValido(nombreArchivo: string): boolean {

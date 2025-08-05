@@ -19,7 +19,6 @@ export { AvatarService } from './services/avatar.service';
 export { CrearUsuarioDto } from './dto/request/crear-usuario.dto';
 export { ActualizarPerfilDto } from './dto/request/perfil.dto';
 export {
-  VerificarEmailDto,
   CambiarPasswordDto,
   FiltrosUsuarioDto,
   CambiarEstadoUsuarioDto,

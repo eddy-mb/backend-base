@@ -6,7 +6,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
 import { DataSource } from 'typeorm';
 import { Usuario } from '../entities/usuario.entity';
 import { EstadoUsuario } from '../enums/usuario.enum';
@@ -35,92 +34,6 @@ export class UsuariosService {
 
   // ==================== CRUD PRINCIPAL ====================
 
-  /**
-   * Buscar usuario por Google ID o email
-   */
-  async buscarPorGoogleIdOEmail(
-    googleId?: string,
-    email?: string,
-  ): Promise<Usuario | null> {
-    if (googleId) {
-      const usuario = await this.usuarioRepository.buscarPorGoogleId(googleId);
-      if (usuario) return usuario;
-    }
-    if (email) {
-      return this.usuarioRepository.buscarPorEmail(email);
-    }
-    return null;
-  }
-
-  /**
-   * Crear usuario OAuth (reutiliza crear() evitando duplicación)
-   */
-  async crearOAuth(
-    datos: CrearUsuarioOAuthDto,
-    ipRegistro?: string,
-    userAgent?: string,
-  ): Promise<Usuario> {
-    this.logger.log('Creando usuario OAuth', 'UsuariosService');
-
-    return this.dataSource.transaction(async (manager) => {
-      // Validaciones OAuth específicas
-      if (
-        datos.googleId &&
-        (await this.usuarioRepository.existeGoogleId(datos.googleId))
-      ) {
-        throw new ConflictException('Ya existe un usuario con este Google ID');
-      }
-
-      // Crear usuario sin password usando método del repositorio
-      const usuarioCreado = await this.usuarioRepository.crear(
-        {
-          email: datos.email,
-          nombre: datos.nombre,
-          googleId: datos.googleId,
-          oauthProvider: datos.oauthProvider,
-          estado: EstadoUsuario.ACTIVO, // OAuth pre-verificado
-          emailVerificado: true,
-          fechaVerificacion: new Date(),
-          ipRegistro,
-          userAgentRegistro: userAgent,
-        },
-        manager,
-      );
-
-      // Crear perfil usando repositorio existente
-      await this.perfilRepository.crear(
-        {
-          usuarioId: usuarioCreado.id,
-          avatar: datos.avatar,
-          configuraciones: this.getConfiguracionPorDefecto(),
-        },
-        manager,
-      );
-
-      this.logger.log(
-        `Usuario OAuth creado: ${usuarioCreado.id} (${datos.oauthProvider})`,
-        'UsuariosService',
-      );
-
-      return usuarioCreado;
-    });
-  }
-
-  private getConfiguracionPorDefecto() {
-    return {
-      notificacionesEmail: true,
-      notificacionesWeb: true,
-      temaOscuro: false,
-      mostrarAvatar: true,
-      perfilPublico: false,
-      configuracionPrivacidad: {
-        mostrarEmail: false,
-        mostrarTelefono: false,
-        mostrarFechaNacimiento: false,
-      },
-    };
-  }
-
   async crear(
     datos: CrearUsuarioDto,
     ipRegistro?: string,
@@ -141,20 +54,74 @@ export class UsuariosService {
           email: datos.email.toLowerCase().trim(),
           password: await this.hashearPassword(datos.password),
           nombre: datos.nombre.trim(),
-          tokenVerificacion: uuidv4(),
           ipRegistro,
           userAgentRegistro: userAgent,
           estado: EstadoUsuario.PENDIENTE_VERIFICACION,
-          usuarioCreacion: 'sistema', // Usuario sistema para auto-registro
+          usuarioCreacion: 'sistema',
         },
         manager,
       );
 
-      // Crear perfil por defecto (sin auditoría de BaseEntity)
-      await this.perfilRepository.crear({ usuarioId: usuario.id }, manager);
+      // Crear perfil por defecto
+      await this.perfilRepository.crear(
+        {
+          usuarioId: usuario.id,
+          configuraciones: this.getConfiguracionPorDefecto(),
+        },
+        manager,
+      );
 
       this.logger.log(`Usuario creado: ${usuario.id}`, 'UsuariosService');
       return usuario;
+    });
+  }
+
+  async crearOAuth(
+    datos: CrearUsuarioOAuthDto,
+    ipRegistro?: string,
+    userAgent?: string,
+  ): Promise<Usuario> {
+    this.logger.log('Creando usuario OAuth', 'UsuariosService');
+
+    return this.dataSource.transaction(async (manager) => {
+      // Validaciones OAuth específicas
+      if (
+        datos.googleId &&
+        (await this.usuarioRepository.existeGoogleId(datos.googleId))
+      ) {
+        throw new ConflictException('Ya existe un usuario con este Google ID');
+      }
+
+      const usuarioCreado = await this.usuarioRepository.crear(
+        {
+          email: datos.email,
+          nombre: datos.nombre,
+          googleId: datos.googleId,
+          oauthProvider: datos.oauthProvider,
+          estado: EstadoUsuario.ACTIVO, // OAuth pre-verificado
+          emailVerificado: true,
+          fechaVerificacion: new Date(),
+          ipRegistro,
+          userAgentRegistro: userAgent,
+        },
+        manager,
+      );
+
+      await this.perfilRepository.crear(
+        {
+          usuarioId: usuarioCreado.id,
+          avatar: datos.avatar,
+          configuraciones: this.getConfiguracionPorDefecto(),
+        },
+        manager,
+      );
+
+      this.logger.log(
+        `Usuario OAuth creado: ${usuarioCreado.id} (${datos.oauthProvider})`,
+        'UsuariosService',
+      );
+
+      return usuarioCreado;
     });
   }
 
@@ -170,6 +137,20 @@ export class UsuariosService {
     return this.usuarioRepository.buscarPorEmail(email.toLowerCase().trim());
   }
 
+  async buscarPorGoogleIdOEmail(
+    googleId?: string,
+    email?: string,
+  ): Promise<Usuario | null> {
+    if (googleId) {
+      const usuario = await this.usuarioRepository.buscarPorGoogleId(googleId);
+      if (usuario) return usuario;
+    }
+    if (email) {
+      return this.usuarioRepository.buscarPorEmail(email);
+    }
+    return null;
+  }
+
   // ==================== GESTIÓN DE PERFIL ====================
 
   async actualizarPerfil(
@@ -183,7 +164,6 @@ export class UsuariosService {
         throw new NotFoundException('Perfil no encontrado');
       }
 
-      // Actualizar perfil (sin campos de auditoría de BaseEntity)
       await this.perfilRepository.actualizar(
         usuario.perfil.id,
         {
@@ -196,7 +176,6 @@ export class UsuariosService {
         manager,
       );
 
-      // Actualizar auditoría solo en Usuario (entity principal)
       await this.usuarioRepository.actualizar(
         usuarioId,
         { usuarioModificacion: usuarioId },
@@ -221,14 +200,12 @@ export class UsuariosService {
 
       const avatarAnterior = usuario.perfil.avatar;
 
-      // Actualizar perfil
       await this.perfilRepository.actualizar(
         usuario.perfil.id,
         { avatar: nombreArchivo },
         manager,
       );
 
-      // Auditoría en Usuario principal
       await this.usuarioRepository.actualizar(
         usuarioId,
         { usuarioModificacion: usuarioId },
@@ -250,14 +227,12 @@ export class UsuariosService {
 
       const avatarAnterior = usuario.perfil.avatar;
 
-      // Actualizar perfil
       await this.perfilRepository.actualizar(
         usuario.perfil.id,
         { avatar: null },
         manager,
       );
 
-      // Auditoría en Usuario principal
       await this.usuarioRepository.actualizar(
         usuarioId,
         { usuarioModificacion: usuarioId },
@@ -275,14 +250,16 @@ export class UsuariosService {
     return `${baseUrl}/uploads/avatares/${avatar}`;
   }
 
-  // ==================== AUTENTICACIÓN ====================
+  // ==================== AUTENTICACIÓN (MÉTODOS BÁSICOS) ====================
 
   async validarCredenciales(
     email: string,
     password: string,
   ): Promise<Usuario | null> {
     const usuario = await this.buscarPorEmail(email);
-    if (!usuario) return null;
+    if (!usuario || !usuario.password) {
+      return null;
+    }
 
     if (usuario.estaBloqueadoPorIntentos()) {
       throw new UnauthorizedException(
@@ -290,7 +267,7 @@ export class UsuariosService {
       );
     }
 
-    const esValido = await bcrypt.compare(password, usuario.password!);
+    const esValido = await bcrypt.compare(password, usuario.password);
     if (!esValido) {
       await this.usuarioRepository.incrementarIntentos(usuario.id);
       return null;
@@ -310,39 +287,25 @@ export class UsuariosService {
       fechaUltimoLogin: new Date(),
       ultimaActividad: new Date(),
       intentosLogin: 0,
-      usuarioModificacion: id, // Auto-modificación por login
+      usuarioModificacion: id,
     });
   }
 
-  // ==================== VERIFICACIÓN ====================
+  async incrementarIntentosLogin(id: string): Promise<void> {
+    await this.usuarioRepository.incrementarIntentos(id);
+  }
 
-  async verificarEmail(token: string): Promise<Usuario> {
-    const usuario = await this.usuarioRepository.buscarPorToken(token);
-    if (!usuario) {
-      throw new BadRequestException(
-        'Token de verificación inválido o expirado',
-      );
-    }
+  async resetearIntentosLogin(id: string): Promise<void> {
+    await this.usuarioRepository.actualizar(id, {
+      intentosLogin: 0,
+      usuarioModificacion: id,
+    });
+  }
 
-    if (usuario.estado !== EstadoUsuario.PENDIENTE_VERIFICACION) {
-      throw new BadRequestException('El usuario ya ha sido verificado');
-    }
-
-    return this.dataSource.transaction(async (manager) => {
-      await this.usuarioRepository.actualizar(
-        usuario.id,
-        {
-          emailVerificado: true,
-          fechaVerificacion: new Date(),
-          estado: EstadoUsuario.ACTIVO,
-          tokenVerificacion: null,
-          usuarioModificacion: 'sistema', // Verificación automática
-        },
-        manager,
-      );
-
-      this.logger.log(`Email verificado: ${usuario.id}`, 'UsuariosService');
-      return this.buscarPorId(usuario.id);
+  async actualizarUltimaActividad(id: string): Promise<void> {
+    await this.usuarioRepository.actualizar(id, {
+      ultimaActividad: new Date(),
+      usuarioModificacion: id,
     });
   }
 
@@ -400,10 +363,25 @@ export class UsuariosService {
 
     await this.usuarioRepository.actualizar(id, {
       password: await this.hashearPassword(datos.passwordNuevo),
-      usuarioModificacion: id, // Auto-modificación
+      usuarioModificacion: id,
     });
 
     this.logger.log(`Contraseña cambiada: ${id}`, 'UsuariosService');
+  }
+
+  async cambiarPasswordDirecto(
+    id: string,
+    hashedPassword: string,
+  ): Promise<void> {
+    await this.usuarioRepository.actualizar(id, {
+      password: hashedPassword,
+      usuarioModificacion: 'sistema',
+    });
+
+    this.logger.log(
+      `Contraseña cambiada directamente: ${id}`,
+      'UsuariosService',
+    );
   }
 
   // ==================== BÚSQUEDA Y LISTADO ====================
@@ -426,7 +404,6 @@ export class UsuariosService {
   // ==================== SOFT DELETE ====================
 
   async eliminar(id: string, usuarioAdministrador?: string): Promise<void> {
-    // Solo se elimina Usuario (CASCADE elimina perfil automáticamente)
     await this.usuarioRepository.actualizar(id, {
       fechaEliminacion: new Date(),
       usuarioEliminacion: usuarioAdministrador || 'sistema',
@@ -457,79 +434,24 @@ export class UsuariosService {
     return this.buscarPorId(id);
   }
 
-  // ==================== MÉTODOS PARA AUTENTICACIÓN ====================
-
-  async actualizarRefreshToken(
-    id: string,
-    refreshToken: string,
-  ): Promise<void> {
-    await this.usuarioRepository.actualizar(id, {
-      refreshToken,
-      ultimaActividad: new Date(),
-      usuarioModificacion: id,
-    });
-  }
-
-  async limpiarRefreshToken(id: string): Promise<void> {
-    await this.usuarioRepository.actualizar(id, {
-      refreshToken: null,
-      usuarioModificacion: id,
-    });
-  }
-
-  async actualizarUltimaActividad(id: string): Promise<void> {
-    await this.usuarioRepository.actualizar(id, {
-      ultimaActividad: new Date(),
-      usuarioModificacion: id,
-    });
-  }
-
-  async generarTokenRecuperacion(id: string): Promise<void> {
-    const tokenRecuperacion = uuidv4();
-    await this.usuarioRepository.actualizar(id, {
-      tokenRecuperacion,
-      usuarioModificacion: 'sistema',
-    });
-  }
-
-  async buscarPorTokenRecuperacion(token: string): Promise<Usuario | null> {
-    return await this.usuarioRepository.buscarPorTokenRecuperacion(token);
-  }
-
-  async confirmarPasswordConToken(
-    token: string,
-    nuevaPassword: string,
-  ): Promise<void> {
-    const usuario = await this.buscarPorTokenRecuperacion(token);
-
-    if (!usuario) {
-      throw new BadRequestException(
-        'Token de recuperación inválido o expirado',
-      );
-    }
-
-    return this.dataSource.transaction(async (manager) => {
-      await this.usuarioRepository.actualizar(
-        usuario.id,
-        {
-          password: await this.hashearPassword(nuevaPassword),
-          tokenRecuperacion: null,
-          refreshToken: null,
-          usuarioModificacion: usuario.id,
-        },
-        manager,
-      );
-
-      this.logger.log(
-        `Contraseña cambiada con token: ${usuario.id}`,
-        'UsuariosService',
-      );
-    });
-  }
-
   // ==================== MÉTODOS PRIVADOS ====================
 
   private async hashearPassword(password: string): Promise<string> {
     return bcrypt.hash(password, PASSWORD_CONFIG.BCRYPT_ROUNDS);
+  }
+
+  private getConfiguracionPorDefecto() {
+    return {
+      notificacionesEmail: true,
+      notificacionesWeb: true,
+      temaOscuro: false,
+      mostrarAvatar: true,
+      perfilPublico: false,
+      configuracionPrivacidad: {
+        mostrarEmail: false,
+        mostrarTelefono: false,
+        mostrarFechaNacimiento: false,
+      },
+    };
   }
 }

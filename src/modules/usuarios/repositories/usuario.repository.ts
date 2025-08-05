@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Repository, EntityManager, SelectQueryBuilder, IsNull } from 'typeorm';
+import { Repository, EntityManager, SelectQueryBuilder } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Usuario } from '../entities/usuario.entity';
 import { EstadoUsuario } from '../enums/usuario.enum';
@@ -67,24 +67,9 @@ export class UsuarioRepository {
     return count > 0;
   }
 
-  async buscarPorToken(token: string): Promise<Usuario | null> {
-    return this.repository.findOne({
-      where: {
-        tokenVerificacion: token,
-        isActive: true,
-      },
-    });
-  }
-
-  async buscarPorTokenRecuperacion(token: string): Promise<Usuario | null> {
-    return this.repository.findOne({
-      where: {
-        tokenRecuperacion: token,
-        isActive: true,
-        fechaEliminacion: IsNull(),
-      },
-    });
-  }
+  // ==================== MÉTODOS REMOVIDOS - AHORA EN TokenService ====================
+  // REMOVIDO: buscarPorToken() - Ahora TokenService.validarToken()
+  // REMOVIDO: buscarPorTokenRecuperacion() - Ahora TokenService.validarToken()
 
   async buscarEliminado(id: string): Promise<Usuario | null> {
     return this.repository.findOne({

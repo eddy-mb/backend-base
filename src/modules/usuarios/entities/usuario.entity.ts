@@ -1,18 +1,19 @@
-import { Entity, Column, OneToOne, Index } from 'typeorm';
+import { Entity, Column, OneToOne, OneToMany, Index } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { BaseEntity } from '../../database/entities/base.entity';
 import { PerfilUsuario } from './perfil-usuario.entity';
 import { LOGIN_CONFIG } from '../constants/usuarios.constants';
 import { EstadoUsuario } from '../enums/usuario.enum';
+import { TokenUsuario } from '@/modules/autenticacion/entities/token-usuario.entity';
 
 /**
- * Entidad Usuario - Core del sistema de autenticación y seguridad
+ * Entidad Usuario - Core del sistema de identidad y perfil
  * Extiende BaseEntity para auditoría automática
  */
 @Entity({ name: 'usuarios', schema: process.env.DB_SCHEMA_USUARIOS })
 @Index(['email'], { unique: true, where: '_fecha_eliminacion IS NULL' })
 export class Usuario extends BaseEntity {
-  // ==================== DATOS DE AUTENTICACIÓN ====================
+  // ==================== DATOS DE IDENTIDAD ====================
   @Column({
     name: 'email',
     type: 'varchar',
@@ -68,36 +69,6 @@ export class Usuario extends BaseEntity {
     comment: 'Fecha y hora de verificación del email',
   })
   fechaVerificacion?: Date;
-
-  // ==================== TOKENS DE SEGURIDAD ====================
-  @Column({
-    name: 'refresh_token',
-    type: 'text',
-    nullable: true,
-    comment: 'Refresh token para renovación de JWT',
-  })
-  @Exclude({ toPlainOnly: true })
-  refreshToken?: string | null;
-
-  @Column({
-    name: 'token_verificacion',
-    type: 'varchar',
-    length: 255,
-    nullable: true,
-    comment: 'Token temporal para verificación de email',
-  })
-  @Exclude({ toPlainOnly: true })
-  tokenVerificacion?: string | null;
-
-  @Column({
-    name: 'token_recuperacion',
-    type: 'varchar',
-    length: 255,
-    nullable: true,
-    comment: 'Token temporal para recuperación de contraseña',
-  })
-  @Exclude({ toPlainOnly: true })
-  tokenRecuperacion?: string | null;
 
   // ==================== METADATOS DE SEGURIDAD ====================
   @Column({
@@ -167,6 +138,9 @@ export class Usuario extends BaseEntity {
     eager: false,
   })
   perfil?: PerfilUsuario;
+
+  @OneToMany(() => TokenUsuario, (token) => token.usuario)
+  tokens?: TokenUsuario[];
 
   // ==================== MÉTODOS DE NEGOCIO ====================
   /**
@@ -242,7 +216,7 @@ export class Usuario extends BaseEntity {
     this.emailVerificado = true;
     this.fechaVerificacion = new Date();
     this.estado = EstadoUsuario.ACTIVO;
-    this.tokenVerificacion = null;
+    // tokenVerificacion ahora se maneja en TokenUsuario
     this.actualizarAuditoria(usuario);
   }
 
