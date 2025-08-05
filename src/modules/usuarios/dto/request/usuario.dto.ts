@@ -13,6 +13,7 @@ import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 import { EstadoUsuario } from '../../enums/usuario.enum';
+import { PASSWORD_CONFIG } from '../../constants/usuarios.constants';
 
 export class CambiarPasswordDto {
   @ApiProperty({
@@ -26,25 +27,25 @@ export class CambiarPasswordDto {
   @ApiProperty({
     description: 'Nueva contraseña del usuario',
     example: 'MiNuevaPassword123!',
-    minLength: 8,
+    minLength: PASSWORD_CONFIG.MIN_LENGTH,
   })
   @IsString({ message: 'La nueva contraseña debe ser una cadena de texto' })
-  @MinLength(8, {
+  @MinLength(PASSWORD_CONFIG.MIN_LENGTH, {
     message: 'La nueva contraseña debe tener al menos 8 caracteres',
   })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+  @Matches(PASSWORD_CONFIG.REGEX, {
     message:
       'La nueva contraseña debe contener al menos: una minúscula, una mayúscula, un número y un carácter especial',
   })
   passwordNuevo: string;
 
-  @ApiProperty({
-    description: 'Confirmación de la nueva contraseña',
-    example: 'MiNuevaPassword123!',
-  })
-  @IsString({ message: 'La confirmación debe ser una cadena de texto' })
-  @IsNotEmpty({ message: 'La confirmación de contraseña es requerida' })
-  confirmarPassword: string;
+  // @ApiProperty({
+  //   description: 'Confirmación de la nueva contraseña',
+  //   example: 'MiNuevaPassword123!',
+  // })
+  // @IsString({ message: 'La confirmación debe ser una cadena de texto' })
+  // @IsNotEmpty({ message: 'La confirmación de contraseña es requerida' })
+  // confirmarPassword: string;
 }
 
 export class CambiarEstadoUsuarioDto {

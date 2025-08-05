@@ -3,34 +3,91 @@ import {
   UnauthorizedException,
   BadRequestException,
 } from '@nestjs/common';
+import bcrypt from 'bcrypt';
 
 import { UsuariosService } from '../../usuarios/services/usuarios.service';
 import { JwtTokenService } from './jwt-token.service';
+import { TokenService } from './token.service';
 import { LoggerService } from '../../logging/services/logger.service';
 
 import {
   LoginDto,
+  VerificarEmailDto,
   RenovarTokenDto,
   RecuperarPasswordDto,
   ConfirmarPasswordDto,
 } from '../dto/auth-request.dto';
-import { AuthResponse, AuthUserInfo } from '../interfaces/auth.interface';
+import {
+  AuthResponse,
+  AuthUserInfo,
+  RequestInfoData,
+} from '../interfaces/auth.interface';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
+import { TipoToken } from '../enums/autenticacion.enum';
+import { PASSWORD_CONFIG } from '../../usuarios/constants/usuarios.constants';
+import { CrearUsuarioDto } from '@/modules/usuarios';
 
 /**
  * Servicio de Autenticación
  * Responsabilidad: Solo lógica de autenticación JWT y tokens
  * Delega operaciones de usuarios a UsuariosService
+ * Gestiona tokens via TokenService
  */
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usuariosService: UsuariosService,
     private readonly jwtTokenService: JwtTokenService,
+    private readonly tokenService: TokenService,
     private readonly logger: LoggerService,
   ) {}
 
-  async login(datos: LoginDto): Promise<AuthResponse> {
+  async registrarUsuario(
+    datos: CrearUsuarioDto,
+    ipRegistro?: string,
+    userAgent?: string,
+  ): Promise<Usuario> {
+    this.logger.log(
+      'Registrando usuario con token de verificación',
+      'AuthService',
+    );
+
+    // Crear usuario usando UsuariosService
+    const usuario = await this.usuariosService.crear(
+      {
+        email: datos.email,
+        password: datos.password,
+        nombre: datos.nombre,
+      },
+      ipRegistro,
+      userAgent,
+    );
+
+    // Generar token de verificación
+    const tokenVerificacion = this.tokenService.generateSecureToken(32);
+    await this.tokenService.crearToken(
+      usuario.id,
+      TipoToken.VERIFICACION_EMAIL,
+      tokenVerificacion,
+      24 * 60 * 60 * 1000, // 24 horas
+      userAgent,
+      ipRegistro,
+    );
+
+    // TODO: Enviar email de verificación usando el servicio de comunicaciones (Módulo 12)
+    // await this.comunicacionesService.enviarEmailVerificacion(datos.email, tokenVerificacion);
+
+    this.logger.log(
+      `Usuario registrado con token: ${usuario.id}`,
+      'AuthService',
+    );
+    return usuario;
+  }
+
+  async login(
+    datos: LoginDto,
+    requestInfo?: RequestInfoData,
+  ): Promise<AuthResponse> {
     const usuario = await this.usuariosService.validarCredenciales(
       datos.email,
       datos.password,
@@ -43,9 +100,18 @@ export class AuthService {
     const { accessToken, refreshToken, expiresIn } =
       this.jwtTokenService.generarTokens(usuario.id, usuario.email);
 
+    // Guardar refresh token en base de datos con información del dispositivo
+    await this.tokenService.crearToken(
+      usuario.id,
+      TipoToken.REFRESH,
+      refreshToken,
+      7 * 24 * 60 * 60 * 1000, // 7 días
+      requestInfo?.userAgent,
+      requestInfo?.ip,
+    );
+
     // Delegar actualización a UsuariosService
     await this.usuariosService.actualizarUltimoLogin(usuario.id);
-    await this.usuariosService.actualizarRefreshToken(usuario.id, refreshToken);
 
     this.logger.log(`Login exitoso: ${usuario.id}`, 'AuthService');
 
@@ -58,6 +124,38 @@ export class AuthService {
     };
   }
 
+  async verificarEmail(datos: VerificarEmailDto): Promise<void> {
+    this.logger.log('Iniciando verificación de email', 'AuthService');
+
+    // Buscar token de verificación
+    const tokenEntity = await this.tokenService.validarToken(
+      datos.token,
+      TipoToken.VERIFICACION_EMAIL,
+    );
+
+    if (!tokenEntity) {
+      throw new BadRequestException(
+        'Token de verificación inválido o expirado',
+      );
+    }
+
+    const usuario = await this.usuariosService.buscarPorId(
+      tokenEntity.usuarioId,
+    );
+
+    if (usuario.emailVerificado) {
+      throw new BadRequestException('El email ya ha sido verificado');
+    }
+
+    // Usar método directo del repository para actualizar
+    await this.usuariosService.verificarEmailDirecto(usuario.id);
+
+    // Revocar token de verificación
+    await this.tokenService.revocarToken(tokenEntity.id);
+
+    this.logger.log(`Email verificado: ${usuario.id}`, 'AuthService');
+  }
+
   async renovarToken(datos: RenovarTokenDto): Promise<{
     accessToken: string;
     tokenType: 'Bearer';
@@ -65,33 +163,31 @@ export class AuthService {
   }> {
     this.logger.log('Renovando token', 'AuthService');
 
-    const validation = await this.jwtTokenService.validarToken(
+    // Validar refresh token en base de datos
+    const tokenEntity = await this.tokenService.validarToken(
       datos.refreshToken,
-      'refresh',
+      TipoToken.REFRESH,
     );
 
-    if (!validation.isValid || !validation.payload) {
+    if (!tokenEntity) {
       throw new UnauthorizedException('Refresh token inválido');
     }
 
-    const { sub: userId } = validation.payload;
-    const usuario = await this.usuariosService.buscarPorId(userId);
+    const usuario = await this.usuariosService.buscarPorId(
+      tokenEntity.usuarioId,
+    );
 
     if (!usuario.puedeIniciarSesion()) {
       throw new UnauthorizedException('Usuario no activo');
-    }
-
-    if (usuario.refreshToken !== datos.refreshToken) {
-      throw new UnauthorizedException('Refresh token no coincide');
     }
 
     const { accessToken, expiresIn } =
       await this.jwtTokenService.renovarAccessToken(datos.refreshToken);
 
     // Delegar a UsuariosService
-    await this.usuariosService.actualizarUltimaActividad(userId);
+    await this.usuariosService.actualizarUltimaActividad(tokenEntity.usuarioId);
 
-    this.logger.log(`Token renovado: ${userId}`, 'AuthService');
+    this.logger.log(`Token renovado: ${tokenEntity.usuarioId}`, 'AuthService');
 
     return {
       accessToken,
@@ -107,15 +203,19 @@ export class AuthService {
   ): Promise<void> {
     this.logger.log(`Logout usuario: ${userId}`, 'AuthService');
 
+    //  Agregar a blacklist Redis
     await this.jwtTokenService.agregarABlacklist(accessToken);
 
-    if (refreshToken) {
-      await this.jwtTokenService.agregarABlacklist(refreshToken);
-    }
+    if (refreshToken && userId) {
+      //  Revocar en base de datos TokenUsuario
+      const tokenEntity = await this.tokenService.validarToken(
+        refreshToken,
+        TipoToken.REFRESH,
+      );
 
-    if (userId) {
-      // Delegar a UsuariosService
-      await this.usuariosService.limpiarRefreshToken(userId);
+      if (tokenEntity) {
+        await this.tokenService.revocarToken(tokenEntity.id);
+      }
     }
 
     this.logger.log(`Logout completado: ${userId}`, 'AuthService');
@@ -124,15 +224,16 @@ export class AuthService {
   async logoutAll(userId: string): Promise<void> {
     this.logger.log(`Logout all sesiones: ${userId}`, 'AuthService');
 
+    // Invalidar en Redis + PostgreSQL
     await this.jwtTokenService.invalidarTodosLosTokens(userId);
-    // Delegar a UsuariosService
-    await this.usuariosService.limpiarRefreshToken(userId);
+    await this.tokenService.revocarTodosPorUsuario(userId, TipoToken.REFRESH);
 
     this.logger.log(`Logout all completado: ${userId}`, 'AuthService');
   }
 
   async solicitarRecuperacionPassword(
     datos: RecuperarPasswordDto,
+    requestInfo?: RequestInfoData,
   ): Promise<void> {
     this.logger.log(
       `Recuperación password solicitada: ${datos.email}`,
@@ -146,7 +247,7 @@ export class AuthService {
         `Recuperación password - email no encontrado: ${datos.email}`,
         'AuthService',
       );
-      return;
+      return; // Por seguridad, no revelar que el email no existe
     }
 
     if (!usuario.puedeIniciarSesion()) {
@@ -155,33 +256,72 @@ export class AuthService {
       );
     }
 
-    // Delegar a UsuariosService
-    await this.usuariosService.generarTokenRecuperacion(usuario.id);
+    // Revocar tokens de recuperación anteriores
+    await this.tokenService.revocarTodosPorUsuario(
+      usuario.id,
+      TipoToken.RECUPERACION_PASSWORD,
+    );
+
+    // Generar token de recuperación con información del dispositivo
+    const token = this.tokenService.generateSecureToken(32);
+    await this.tokenService.crearToken(
+      usuario.id,
+      TipoToken.RECUPERACION_PASSWORD,
+      token,
+      60 * 60 * 1000, // 1 hora
+      requestInfo?.userAgent,
+      requestInfo?.ip,
+    );
 
     this.logger.log(
       `Token recuperación generado: ${usuario.id}`,
       'AuthService',
     );
+
+    // TODO: Enviar email con token (Módulo 12)
+    // await this.emailService.enviarRecuperacionPassword(usuario, token);
   }
 
   async confirmarNuevaPassword(datos: ConfirmarPasswordDto): Promise<void> {
     this.logger.log('Confirmando nueva contraseña', 'AuthService');
 
-    // Delegar búsqueda y cambio a UsuariosService
-    await this.usuariosService.confirmarPasswordConToken(
+    // Buscar token de recuperación
+    const tokenEntity = await this.tokenService.validarToken(
       datos.token,
-      datos.password,
+      TipoToken.RECUPERACION_PASSWORD,
     );
 
-    // Invalidar todos los tokens existentes
-    const usuario = await this.usuariosService.buscarPorTokenRecuperacion(
-      datos.token,
-    );
-    if (usuario) {
-      await this.jwtTokenService.invalidarTodosLosTokens(usuario.id);
+    if (!tokenEntity) {
+      throw new BadRequestException(
+        'Token de recuperación inválido o expirado',
+      );
     }
 
-    this.logger.log('Contraseña cambiada exitosamente', 'AuthService');
+    // Cambiar contraseña directamente (bypass validación de password actual)
+    const hashedPassword = await bcrypt.hash(
+      datos.password,
+      PASSWORD_CONFIG.BCRYPT_ROUNDS,
+    );
+
+    await this.usuariosService.cambiarPasswordDirecto(
+      tokenEntity.usuarioId,
+      hashedPassword,
+    );
+
+    // Revocar token de recuperación
+    await this.tokenService.revocarToken(tokenEntity.id);
+
+    // Invalidar todos los tokens existentes para forzar re-login
+    await this.jwtTokenService.invalidarTodosLosTokens(tokenEntity.usuarioId);
+    await this.tokenService.revocarTodosPorUsuario(
+      tokenEntity.usuarioId,
+      TipoToken.REFRESH,
+    );
+
+    this.logger.log(
+      `Contraseña cambiada via recuperación: ${tokenEntity.usuarioId}`,
+      'AuthService',
+    );
   }
 
   async validarUsuarioPorId(userId: string): Promise<Usuario | null> {

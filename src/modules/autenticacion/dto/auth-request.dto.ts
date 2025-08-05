@@ -6,6 +6,20 @@ import {
   Matches,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { PASSWORD_CONFIG } from '@/modules/usuarios/constants/usuarios.constants';
+
+/**
+ * DTO para verificar email
+ */
+export class VerificarEmailDto {
+  @ApiProperty({
+    description: 'Token de verificación de email',
+    example: 'abc123-def456-ghi789',
+  })
+  @IsString({ message: 'El token debe ser una cadena de texto' })
+  @IsNotEmpty({ message: 'El token es requerido' })
+  token: string;
+}
 
 /**
  * DTO para login con credenciales
@@ -56,11 +70,6 @@ export class RecuperarPasswordDto {
 
 /**
  * DTO para confirmar nueva contraseña
- *
- * DISEÑO CORREGIDO:
- * - Frontend valida que password === confirmPassword
- * - Backend recibe SOLO la contraseña final validada
- * - Backend se enfoca en reglas de negocio y seguridad
  */
 export class ConfirmarPasswordDto {
   @ApiProperty({
@@ -72,17 +81,17 @@ export class ConfirmarPasswordDto {
   token: string;
 
   @ApiProperty({
-    description: 'Nueva contraseña (ya validada por frontend)',
+    description: 'Nueva contraseña',
     example: 'NuevaPassword123!',
-    minLength: 8,
+    minLength: PASSWORD_CONFIG.MIN_LENGTH,
   })
   @IsString({ message: 'La contraseña debe ser una cadena de texto' })
-  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+  @MinLength(PASSWORD_CONFIG.MIN_LENGTH, {
+    message: 'La contraseña debe tener al menos 8 caracteres',
+  })
+  @Matches(PASSWORD_CONFIG.REGEX, {
     message:
       'La contraseña debe contener al menos una minúscula, una mayúscula, un número y un carácter especial',
   })
   password: string;
-
-  // ✅ ELIMINADO: confirmarPassword - se maneja en frontend
 }

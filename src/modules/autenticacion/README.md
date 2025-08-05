@@ -1,193 +1,393 @@
 # Módulo 8: Autenticación
 
-## Descripción
+## 🎯 **Descripción**
 
-Módulo de autenticación JWT con sistema completo de login, logout, recuperación de contraseña y OAuth Google. **Usa el sistema de auditoría existente** con decoradores.
+Sistema completo de autenticación JWT que incluye **registro de usuarios, verificación de email, login/logout, recuperación de contraseña y OAuth Google**. Integra auditoría automática y manejo de tokens seguros con blacklist en Redis.
 
-## Características Principales
+## 🔐 **Características Principales**
 
-### 🔐 Autenticación JWT
-- Access tokens (15min) y refresh tokens (7d)
-- Blacklist en Redis para invalidación inmediata
-- Rate limiting por endpoint
+### **Registro y Verificación**
 
-### 🛡️ Seguridad
-- Protección contra fuerza bruta
-- **Auditoría automática con @Auditable() del módulo existente**
-- Validación de contraseñas optimizada (frontend valida confirmación)
+- ✅ Registro de usuarios con validación
+- ✅ Verificación de email con tokens seguros
+- ✅ Estados de usuario (pendiente → activo)
 
-### 📧 Recuperación de Contraseña
-- Tokens seguros temporales
-- **Frontend valida confirmación, backend recibe solo password**
+### **Autenticación JWT**
 
-## Uso del Sistema de Auditoría
+- ✅ Access tokens (15min) y refresh tokens (7d)
+- ✅ Blacklist dual en Redis (individual + por usuario)
+- ✅ Renovación automática de tokens
 
-### Decoradores Aplicados
+### **Seguridad Avanzada**
+
+- ✅ Rate limiting por endpoint
+- ✅ Protección contra fuerza bruta
+- ✅ Auditoría automática con `@Auditable()`
+- ✅ Tracking de dispositivos (IP, User-Agent)
+
+### **Recuperación de Contraseña**
+
+- ✅ Tokens temporales seguros (1 hora)
+- ✅ Invalidación de todas las sesiones tras cambio
+
+### **OAuth Google**
+
+- ✅ Integración completa con Google OAuth 2.0
+- ✅ Creación automática de usuarios
+
+## 📍 **API Endpoints**
+
+### **Registro y Verificación**
+
+```http
+POST /api/v1/auth/registro
+POST /api/v1/auth/verificar-email
+```
+
+### **Autenticación Principal**
+
+```http
+POST /api/v1/auth/login
+POST /api/v1/auth/renovar-token
+POST /api/v1/auth/logout
+POST /api/v1/auth/logout-all
+```
+
+### **Recuperación de Contraseña**
+
+```http
+POST /api/v1/auth/recuperar-password
+POST /api/v1/auth/confirmar-password
+```
+
+### **OAuth Google**
+
+```http
+GET /api/v1/auth/google
+GET /api/v1/auth/google/callback
+```
+
+## 🛡️ **Sistema de Seguridad**
+
+### **Rate Limiting**
+
 ```typescript
-import { Auditable, AuditableCritical } from '../../auditoria';
+@Post('registro')
+@Throttle({ default: { limit: 5, ttl: 3600000 } }) // 5 por hora
 
 @Post('login')
+@Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 por minuto
+
+@Post('recuperar-password')
+@Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 por hora
+```
+
+### **Auditoría Automática**
+
+```typescript
+@Post('login')
 @Auditable({ tabla: 'usuarios', descripcion: 'Login con credenciales' })
-async login() { }
 
 @Post('logout-all')
 @AuditableCritical({ tabla: 'usuarios', descripcion: 'Cierre todas sesiones' })
-async logoutAll() { }
 
 @Post('recuperar-password')
 @AuditableCritical({ tabla: 'usuarios', descripcion: 'Solicitud recuperación' })
-async recuperarPassword() { }
 ```
 
-### Eventos Registrados Automáticamente
-- Login exitoso/fallido
-- Renovación de tokens
-- Logout individual/masivo
-- Recuperación de contraseña
-- OAuth Google
+## 🏗️ **Arquitectura de Tokens**
 
-## API Endpoints
+### **Doble Sistema Integrado**
 
-### Autenticación Principal
-- `POST /auth/login` - Login con credenciales
-- `POST /auth/renovar-token` - Renovar access token
-- `POST /auth/logout` - Cerrar sesión actual
-- `POST /auth/logout-all` - Cerrar todas las sesiones
+#### **JWT Tokens (JwtTokenService)**
 
-### Recuperación de Contraseña
-- `POST /auth/recuperar-password` - Solicitar recuperación
-- `POST /auth/confirmar-password` - Confirmar nueva contraseña
+- Access tokens para autenticación activa
+- Blacklist en Redis con doble indexación:
+  ```
+  blacklist:token_hash → "1" (verificación rápida)
+  user_tokens:userId:token_hash → "1" (invalidación masiva)
+  ```
 
-### OAuth Google
-- `GET /auth/google` - Iniciar OAuth
-- `GET /auth/google/callback` - Callback OAuth
+#### **TokenUsuario Entity (TokenService)**
 
-## DTOs Optimizados
+- Refresh tokens persistentes en PostgreSQL
+- Tokens de verificación y recuperación
+- Tracking completo de dispositivos
 
-### Confirmación de Contraseña
+### **Flujos Sincronizados**
+
 ```typescript
-// ✅ Frontend valida, backend recibe solo password final
-export class ConfirmarPasswordDto {
-  token: string;
-  password: string; // Solo password validado
-  // confirmPassword eliminado - se valida en frontend
-}
+// Login: PostgreSQL + JWT
+await tokenService.crearToken(userId, TipoToken.REFRESH, refreshToken);
+const { accessToken } = jwtTokenService.generarTokens(userId, email);
+
+// Renovar: Validación dual
+const tokenEntity = await tokenService.validarToken(
+  refreshToken,
+  TipoToken.REFRESH,
+);
+const validation = await jwtTokenService.validarToken(refreshToken, 'refresh');
+
+// Logout: Blacklist Redis + Revocación PostgreSQL
+await jwtTokenService.agregarABlacklist(accessToken);
+await tokenService.revocarToken(tokenEntity.id);
 ```
 
-## Guards Simplificado
+## 🔧 **Servicios Principales**
 
-### JwtAuthGuard
+### **AuthService**
+
 ```typescript
-// ✅ Simple: con guard = protegido, sin guard = público
-@Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
-  handleRequest(err: any, user: any): any {
-    if (err || !user) {
-      throw err || new UnauthorizedException('Token requerido');
-    }
-    return user;
-  }
-}
+// Registro y verificación
+async registrarUsuario(datos: CrearUsuarioDto, requestInfo?: RequestInfoData)
+async verificarEmail(datos: VerificarEmailDto): Promise<void>
+
+// Autenticación
+async login(datos: LoginDto, requestInfo?: RequestInfoData): Promise<AuthResponse>
+async logout(accessToken: string, refreshToken?: string, userId?: string)
+async logoutAll(userId: string): Promise<void>
+
+// Recuperación
+async solicitarRecuperacionPassword(datos: RecuperarPasswordDto, requestInfo?: RequestInfoData)
+async confirmarNuevaPassword(datos: ConfirmarPasswordDto): Promise<void>
 ```
 
-## Uso en Controllers
+### **JwtTokenService**
 
-### Helper Global (BaseController)
 ```typescript
+// Generación y validación
+generarTokens(userId: string, email: string): TokenPair
+async validarToken(token: string, type: 'access' | 'refresh'): Promise<TokenValidationResult>
+async renovarAccessToken(refreshToken: string): Promise<NewAccessToken>
+
+// Blacklist management
+async agregarABlacklist(token: string): Promise<void>
+async estaEnBlacklist(token: string): Promise<boolean>
+async invalidarTodosLosTokens(userId: string): Promise<void>
+```
+
+### **TokenService**
+
+```typescript
+// Gestión en base de datos
+async crearToken(userId: string, tipo: TipoToken, token: string, ttl: number, userAgent?: string, ip?: string)
+async validarToken(token: string, tipo: TipoToken): Promise<TokenUsuario | null>
+async revocarToken(tokenId: string): Promise<void>
+async revocarTodosPorUsuario(userId: string, tipo: TipoToken): Promise<void>
+```
+
+## 🔐 **Uso del JwtAuthGuard**
+
+### **Controller Protegido**
+
+```typescript
+import { JwtAuthGuard } from '../autenticacion/guards/jwt-auth.guard';
+
 @Controller('protected')
 export class ProtectedController extends BaseController {
-  
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Req() req: RequestWithUser) {
-    const userId = this.getUser(req); // ✅ Helper global
-    return { userId };
+    const userId = this.getUser(req); // Helper del BaseController
+    const user = await this.userService.findById(userId);
+    return this.success(user);
   }
 }
 ```
 
-### Decoradores Disponibles
-```typescript
-import { RequestInfo } from '../autenticacion';
+### **Estrategia JWT**
 
-@Post('login')
-async login(
-  @Body() loginDto: LoginDto,
-  @RequestInfo() info: { ip: string; userAgent: string }
-) { }
+```typescript
+// Validación automática en JwtStrategy
+async validate(request: any, payload: JwtPayload): Promise<Usuario> {
+  // 1. Verificar blacklist Redis
+  const token = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
+  const estaEnBlacklist = await this.jwtTokenService.estaEnBlacklist(token);
+
+  // 2. Validar usuario activo
+  const usuario = await this.authService.validarUsuarioPorId(payload.sub);
+
+  return usuario; // Se agrega automáticamente a req.user
+}
 ```
 
-## Servicios Limpios
+## 📊 **Entidad TokenUsuario**
 
-### AuthService
-- Solo lógica de negocio de autenticación
-- **Sin auditoría manual** (manejada por interceptor)
-- Integración con UsuariosService del Módulo 7
+```typescript
+@Entity('tokens_usuario')
+export class TokenUsuario {
+  @PrimaryGeneratedColumn()
+  id: string;
 
-### JwtTokenService  
-- Generación/validación de tokens
-- Gestión de blacklist en Redis
-- Renovación automática
+  @Column()
+  usuarioId: string;
 
-### OAuthService
-- Procesamiento OAuth Google
-- **Sin auditoría manual** (manejada por interceptor)
+  @Column({ type: 'enum', enum: TipoToken })
+  tipo: TipoToken; // 'refresh' | 'verificacion_email' | 'recuperacion_password'
 
-## Configuración
+  @Column()
+  token: string;
 
-### Variables de Entorno
+  @Column()
+  fechaExpiracion: Date;
+
+  @Column({ nullable: true })
+  infoDispositivo?: string; // User-Agent
+
+  @Column({ type: 'inet', nullable: true })
+  direccionIp?: string;
+
+  @Column({ default: false })
+  revocado: boolean;
+}
+```
+
+## ⚙️ **Configuración**
+
+### **Variables de Entorno**
+
 ```bash
+# JWT Configuration
 JWT_SECRET=your-super-secret-jwt-key-min-32-chars
 JWT_EXPIRES_IN=15m
-JWT_REFRESH_SECRET=your-super-secret-refresh-key
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-min-32-chars
 JWT_REFRESH_EXPIRES_IN=7d
+
+# OAuth Google (opcional)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+# GOOGLE_CALLBACK_URL=http://localhost:3001/api/v1/auth/google/callback
+
+# Rate Limiting
+# AUTH_RATE_LIMIT_MAX_IP=5
+# AUTH_RATE_LIMIT_WINDOW_IP=15
+# AUTH_RATE_LIMIT_MAX_USER=5
+# AUTH_RATE_LIMIT_WINDOW_USER=15
+
+# URLs Frontend
 FRONTEND_URL=http://localhost:3000
+FRONTEND_LOGIN_URL=http://localhost:3000/login
+# FRONTEND_RESET_URL=http://localhost:3000/resetear-password
 ```
 
-## Dependencias
+## 🔄 **Dependencias de Módulos**
 
-### Módulos Requeridos
-- Módulo 1: Configuración
-- Módulo 2: Base de Datos  
-- Módulo 3: Redis
-- Módulo 6: **Auditoría (sistema existente)**
-- Módulo 7: Usuarios
+### **Requeridas**
 
-### Paquetes NPM
-```bash
-npm install @nestjs/jwt @nestjs/passport passport passport-jwt bcrypt
+- **Módulo 1**: Configuración (JWT secrets, OAuth, rate limits)
+- **Módulo 2**: Base de Datos (TokenUsuario entity)
+- **Módulo 3**: Redis (blacklist, rate limiting)
+- **Módulo 4**: Respuestas Estandarizadas (formato API)
+- **Módulo 6**: Auditoría (eventos de seguridad)
+- **Módulo 7**: Usuarios (entidad Usuario, CRUD)
+
+### **Opcionales**
+
+- **Módulo 5**: Logging (logs técnicos)
+- **Módulo 12**: Comunicaciones (emails de verificación/recuperación)
+
+## 📝 **Ejemplo de Uso Completo**
+
+### **Flujo de Registro**
+
+```typescript
+// 1. Registro
+const response = await fetch('/api/v1/auth/registro', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    nombre: 'Juan Pérez',
+    email: 'juan@ejemplo.com',
+    password: 'MiPassword123!',
+  }),
+});
+
+// 2. Verificación (token recibido por email)
+await fetch('/api/v1/auth/verificar-email', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token: 'token-from-email' }),
+});
+
+// 3. Login
+const authResponse = await fetch('/api/v1/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'juan@ejemplo.com',
+    password: 'MiPassword123!',
+  }),
+});
+
+const { accessToken, refreshToken } = await authResponse.json();
 ```
 
-## Consulta de Auditoría
+### **Acceso a Endpoints Protegidos**
 
-### Ver Logs de Autenticación
-```bash
-GET /api/v1/auditoria?tabla=usuarios&accion=LOGIN_EXITOSO
+```typescript
+const response = await fetch('/api/v1/protected/profile', {
+  headers: {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  },
+});
+```
+
+### **Renovación Automática**
+
+```typescript
+const renewResponse = await fetch('/api/v1/auth/renovar-token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ refreshToken }),
+});
+
+const { accessToken: newAccessToken } = await renewResponse.json();
+```
+
+## 📈 **Monitoreo y Auditoría**
+
+### **Consulta de Logs de Autenticación**
+
+```http
+GET /api/v1/auditoria?tabla=usuarios&descripcion=Login
 GET /api/v1/auditoria?tabla=usuarios&descripcion=recuperación
+GET /api/v1/auditoria?usuarioId=123&fechaInicio=2024-01-01
 ```
 
-## CORRECCIONES IMPLEMENTADAS
+### **Eventos Auditados Automáticamente**
 
-### ✅ 1. Uso del Sistema de Auditoría Existente
-- **ANTES**: Auditoría manual en servicios
-- **AHORA**: Decoradores @Auditable() del módulo existente
-- **BENEFICIO**: Reutilización del sistema implementado
+- ✅ Registro de usuarios
+- ✅ Verificación de email
+- ✅ Login exitoso/fallido
+- ✅ Renovación de tokens
+- ✅ Logout individual/masivo
+- ✅ Solicitud de recuperación
+- ✅ Cambio de contraseña
+- ✅ OAuth Google
 
-### ✅ 2. Validación Frontend/Backend Correcta  
-- **ANTES**: Backend validaba password === confirmPassword
-- **AHORA**: Frontend valida, backend recibe solo password
-- **BENEFICIO**: Separación correcta de responsabilidades
+## 🎯 **Beneficios de la Arquitectura**
 
-### ✅ 3. Guard Simplificado
-- **ANTES**: Lógica compleja @OptionalAuth innecesaria
-- **AHORA**: Simple: con guard = protegido, sin guard = público  
-- **BENEFICIO**: Código limpio y directo
+### **Seguridad**
 
-### ✅ 4. Helper Global vs Decorador Específico
-- **ANTES**: Decorador @CurrentUser() específico del módulo
-- **AHORA**: Helper this.getUser(req) del BaseController global
-- **BENEFICIO**: Consistencia en toda la aplicación
+- Doble validación (JWT + DB) para refresh tokens
+- Blacklist eficiente con invalidación masiva
+- Tracking completo de dispositivos
+- Rate limiting granular
+
+### **Performance**
+
+- Verificación rápida de blacklist (Redis)
+- TTL automático para limpieza
+- Queries optimizadas en PostgreSQL
+
+### **Mantenibilidad**
+
+- Separación clara de responsabilidades
+- Integración con sistema de auditoría existente
+- Código reutilizable entre módulos
+- Documentación completa de flujos
 
 ---
 
-**Sistema de autenticación completo usando la infraestructura existente correctamente.**
+**Sistema de autenticación enterprise-grade con trazabilidad completa y seguridad robusta.**
