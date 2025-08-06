@@ -1,6 +1,5 @@
-import { Module, Global } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_GUARD } from '@nestjs/core';
 
 // Entities
 import { Rol } from './entities/rol.entity';
@@ -28,7 +27,6 @@ import { PoliticasController } from './controllers/politicas.controller';
 import { RedisModule } from '../redis/redis.module';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 
-@Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([Rol, UsuarioRol, CasbinRule]),
@@ -36,23 +34,15 @@ import { UsuariosModule } from '../usuarios/usuarios.module';
     UsuariosModule,
   ],
   providers: [
-    // Repositories
     RolRepository,
     UsuarioRolRepository,
     CasbinRuleRepository,
-
-    // Services
     CasbinService,
     RolesService,
     PoliticasService,
-
-    // Global Guard
-    {
-      provide: APP_GUARD,
-      useClass: CasbinGuard,
-    },
+    CasbinGuard, // Sin APP_GUARD
   ],
   controllers: [RolesController, PoliticasController],
-  exports: [CasbinService, RolesService, PoliticasService],
+  exports: [CasbinService, RolesService, PoliticasService, CasbinGuard],
 })
 export class AutorizacionModule {}

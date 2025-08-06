@@ -38,7 +38,7 @@ export async function seedAutorizacion(dataSource: DataSource): Promise<void> {
     if (!existente) {
       const rol = rolRepository.create({
         ...rolData,
-        usuarioCreacion: 'sistema',
+        // usuarioCreacion: null, // Autoregistro sin usuario autenticado
       });
       await rolRepository.save(rol);
       console.log(`  ✅ Rol creado: ${rolData.codigo}`);
