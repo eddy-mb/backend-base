@@ -4,7 +4,7 @@ import { BaseEntity } from '../../database/entities/base.entity';
 import { PerfilUsuario } from './perfil-usuario.entity';
 import { LOGIN_CONFIG } from '../constants/usuarios.constants';
 import { EstadoUsuario } from '../enums/usuario.enum';
-import { TokenUsuario } from '@/modules/autenticacion/entities/token-usuario.entity';
+import { TokenUsuario } from '../../autenticacion/entities/token-usuario.entity';
 
 /**
  * Entidad Usuario - Core del sistema de identidad y perfil

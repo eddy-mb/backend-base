@@ -57,7 +57,7 @@ export class UsuariosService {
           ipRegistro,
           userAgentRegistro: userAgent,
           estado: EstadoUsuario.PENDIENTE_VERIFICACION,
-          usuarioCreacion: 'sistema',
+          // usuarioCreacion: null, // Autoregistro sin usuario autenticado
         },
         manager,
       );
@@ -326,7 +326,7 @@ export class UsuariosService {
 
     await this.usuarioRepository.actualizar(id, {
       estado: datos.estado,
-      usuarioModificacion: usuarioAdministrador || 'sistema',
+      usuarioModificacion: usuarioAdministrador,
     });
 
     this.logger.log(
@@ -387,7 +387,7 @@ export class UsuariosService {
   async eliminar(id: string, usuarioAdministrador?: string): Promise<void> {
     await this.usuarioRepository.actualizar(id, {
       fechaEliminacion: new Date(),
-      usuarioEliminacion: usuarioAdministrador || 'sistema',
+      usuarioEliminacion: usuarioAdministrador,
       isActive: false,
     });
 
@@ -407,7 +407,7 @@ export class UsuariosService {
     await this.usuarioRepository.actualizar(id, {
       fechaEliminacion: null,
       usuarioEliminacion: null,
-      usuarioModificacion: usuarioAdministrador || 'sistema',
+      usuarioModificacion: usuarioAdministrador,
       isActive: true,
     });
 
@@ -423,7 +423,7 @@ export class UsuariosService {
   ): Promise<void> {
     await this.usuarioRepository.actualizar(id, {
       password: hashedPassword,
-      usuarioModificacion: 'sistema',
+      // usuarioModificacion: null, // Autoregistro sin usuario autenticado
     });
 
     this.logger.log(
@@ -441,7 +441,7 @@ export class UsuariosService {
       emailVerificado: true,
       fechaVerificacion: new Date(),
       estado: EstadoUsuario.ACTIVO,
-      usuarioModificacion: 'sistema',
+      // usuarioModificacion: null, // Autoregistro sin usuario autenticado
     });
 
     this.logger.log(`Email verificado directamente: ${id}`, 'UsuariosService');
