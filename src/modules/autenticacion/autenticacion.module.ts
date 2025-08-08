@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -34,7 +34,6 @@ import { GoogleStrategy } from './strategies/google.strategy';
 
 // Configuración
 import { ConfiguracionService } from '../configuracion/services/configuracion.service';
-import { AutorizacionModule } from '../autorizacion/autorizacion.module';
 
 @Module({
   imports: [
@@ -43,7 +42,6 @@ import { AutorizacionModule } from '../autorizacion/autorizacion.module';
     ConfiguracionModule,
     AuditoriaModule,
     LoggingModule,
-    forwardRef(() => AutorizacionModule),
 
     TypeOrmModule.forFeature([TokenUsuario]),
 

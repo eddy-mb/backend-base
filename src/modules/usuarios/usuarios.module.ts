@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
@@ -23,6 +23,7 @@ import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { LoggingModule } from '../logging/logging.module';
 import { createMulterOptions } from '../../config/upload.config';
 import { AVATAR_CONFIG } from './constants/usuarios.constants';
+import { AutorizacionModule } from '../autorizacion';
 
 @Module({
   imports: [
@@ -39,8 +40,8 @@ import { AVATAR_CONFIG } from './constants/usuarios.constants';
           prefix: AVATAR_CONFIG.PREFIX,
         }),
     }),
-
-    ConfiguracionModule,
+    forwardRef(() => AutorizacionModule),
+    forwardRef(() => ConfiguracionModule),
     LoggingModule,
   ],
 

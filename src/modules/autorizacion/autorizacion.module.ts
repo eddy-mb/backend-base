@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Entities
@@ -31,7 +31,7 @@ import { UsuariosModule } from '../usuarios/usuarios.module';
   imports: [
     TypeOrmModule.forFeature([Rol, UsuarioRol, CasbinRule]),
     RedisModule,
-    UsuariosModule,
+    forwardRef(() => UsuariosModule),
   ],
   providers: [
     RolRepository,

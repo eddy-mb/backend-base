@@ -4,7 +4,6 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfiguracionService } from '../../configuracion/services/configuracion.service';
 import { AuthService } from '../services/auth.service';
 import { JwtTokenService } from '../services/jwt-token.service';
-import { RolesService } from '../../autorizacion/services/roles.service';
 import { JwtPayload } from '../interfaces/auth.interface';
 
 /**
@@ -16,7 +15,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private readonly configuracionService: ConfiguracionService,
     private readonly authService: AuthService,
     private readonly jwtTokenService: JwtTokenService,
-    private readonly rolesService: RolesService, // Nueva dependencia
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -27,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   /**
-   * Validación del payload JWT con roles incluidos
+   * Validación del payload JWT - Solo autenticación
    */
   async validate(request: any, payload: JwtPayload) {
     if (payload.type !== 'access') {
@@ -49,17 +47,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       );
     }
 
-    // Obtener roles del usuario para autorización
-    const roles = await this.rolesService.obtenerCodigosRolesUsuario(
-      usuario.id,
-    );
-
-    // Retornar usuario con roles para CasbinGuard
+    // Retornar solo datos de usuario autenticado (sin roles)
     return {
       id: usuario.id,
       nombre: usuario.nombre,
       email: usuario.email,
-      roles,
     };
   }
 }

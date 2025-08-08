@@ -6,11 +6,12 @@ import { ValidacionService } from '../configuracion/services/validacion.service'
 import { RedisService } from './services/redis.service';
 import { QueueService } from './services/queue.service';
 import { RedisHealthService } from './services/redis-health.service';
+import { forwardRef } from '@nestjs/common';
 
 @Global()
 @Module({
   imports: [
-    ConfiguracionModule,
+    forwardRef(() => ConfiguracionModule),
     BullModule.forRootAsync({
       useFactory: (configuracionService: ConfiguracionService) => {
         const redisConfig = configuracionService.redis;

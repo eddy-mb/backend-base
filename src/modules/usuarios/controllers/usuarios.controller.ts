@@ -11,6 +11,7 @@ import {
   UploadedFile,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -42,7 +43,10 @@ import {
 
 import { ValidacionAvatarPipe } from '../pipes/validacion-avatar.pipe';
 import { MENSAJES } from '../constants/usuarios.constants';
+import { CasbinGuard } from '../../../modules/autorizacion/guards/casbin.guard';
+import { JwtAuthGuard } from '../../../modules/autenticacion/guards/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard, CasbinGuard)
 @ApiTags('Usuarios')
 @Controller('usuarios')
 export class UsuariosController extends BaseController {
@@ -59,7 +63,6 @@ export class UsuariosController extends BaseController {
   @Get('perfil')
   @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
   @ApiResponse({ status: 200, type: UsuarioConPerfilResponseDto })
-  // @UseGuards(AuthGuard) // TODO: Activar con Módulo 8
   async obtenerPerfil(@Req() req: RequestWithUser) {
     const usuarioId = this.getUser(req);
     const usuario = await this.usuariosService.buscarPorId(usuarioId, true);
@@ -77,7 +80,6 @@ export class UsuariosController extends BaseController {
   @Put('perfil')
   @ApiOperation({ summary: 'Actualizar perfil del usuario' })
   @ApiResponse({ status: 200, type: UsuarioConPerfilResponseDto })
-  // @UseGuards(AuthGuard) // TODO: Activar con Módulo 8
   async actualizarPerfil(
     @Req() req: RequestWithUser,
     @Body() datos: ActualizarPerfilDto,
@@ -102,7 +104,6 @@ export class UsuariosController extends BaseController {
   @UseInterceptors(FileInterceptor('avatar'))
   @ApiOperation({ summary: 'Subir avatar del usuario' })
   @ApiConsumes('multipart/form-data')
-  // @UseGuards(AuthGuard) // TODO: Activar con Módulo 8
   async subirAvatar(
     @Req() req: RequestWithUser,
     @UploadedFile(ValidacionAvatarPipe) archivo: Express.Multer.File,
@@ -132,7 +133,6 @@ export class UsuariosController extends BaseController {
 
   @Delete('avatar')
   @ApiOperation({ summary: 'Eliminar avatar del usuario' })
-  // @UseGuards(AuthGuard) // TODO: Activar con Módulo 8
   async eliminarAvatar(@Req() req: RequestWithUser) {
     const usuarioId = this.getUser(req);
     const avatarAnterior = await this.usuariosService.eliminarAvatar(usuarioId);
@@ -146,7 +146,6 @@ export class UsuariosController extends BaseController {
 
   @Put('cambiar-password')
   @ApiOperation({ summary: 'Cambiar contraseña del usuario' })
-  // @UseGuards(AuthGuard) // TODO: Activar con Módulo 8
   async cambiarPassword(
     @Req() req: RequestWithUser,
     @Body() datos: CambiarPasswordDto,
@@ -161,7 +160,6 @@ export class UsuariosController extends BaseController {
   @Get()
   @ApiOperation({ summary: 'Listar usuarios con filtros' })
   @ApiResponse({ status: 200, type: [UsuarioAdminResponseDto] })
-  // @UseGuards(AuthGuard, AdminGuard) // TODO: Activar con Módulos 8 y 9
   async listarUsuarios(@Query() filtros: FiltrosUsuarioDto) {
     const resultado = await this.usuariosService.listarConFiltros(filtros);
 
@@ -180,7 +178,6 @@ export class UsuariosController extends BaseController {
 
   @Get('estadisticas')
   @ApiOperation({ summary: 'Obtener estadísticas de usuarios' })
-  // @UseGuards(AuthGuard, AdminGuard) // TODO: Activar con Módulos 8 y 9
   async obtenerEstadisticas() {
     const estadisticas = await this.usuariosService.obtenerEstadisticas();
     return this.success(estadisticas);
@@ -189,7 +186,6 @@ export class UsuariosController extends BaseController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener usuario por ID' })
   @ApiResponse({ status: 200, type: UsuarioAdminResponseDto })
-  // @UseGuards(AuthGuard, AdminGuard) // TODO: Activar con Módulos 8 y 9
   async obtenerUsuario(@Param('id') id: string) {
     const usuario = await this.usuariosService.buscarPorId(id, true);
 
@@ -206,7 +202,6 @@ export class UsuariosController extends BaseController {
   @Put(':id/estado')
   @ApiOperation({ summary: 'Cambiar estado de usuario' })
   @ApiResponse({ status: 200, type: UsuarioResponseDto })
-  // @UseGuards(AuthGuard, AdminGuard) // TODO: Activar con Módulos 8 y 9
   async cambiarEstado(
     @Param('id') id: string,
     @Body() datos: CambiarEstadoUsuarioDto,
@@ -227,7 +222,6 @@ export class UsuariosController extends BaseController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar usuario (soft delete)' })
-  // @UseGuards(AuthGuard, AdminGuard) // TODO: Activar con Módulos 8 y 9
   async eliminarUsuario(@Param('id') id: string, @Req() req: RequestWithUser) {
     const usuarioAdministrador = this.getUser(req);
     await this.usuariosService.eliminar(id, usuarioAdministrador);
@@ -238,7 +232,6 @@ export class UsuariosController extends BaseController {
   @Put(':id/restaurar')
   @ApiOperation({ summary: 'Restaurar usuario eliminado' })
   @ApiResponse({ status: 200, type: UsuarioResponseDto })
-  // @UseGuards(AuthGuard, AdminGuard) // TODO: Activar con Módulos 8 y 9
   async restaurarUsuario(@Param('id') id: string, @Req() req: RequestWithUser) {
     const usuarioAdministrador = this.getUser(req);
     const usuario = await this.usuariosService.restaurar(
