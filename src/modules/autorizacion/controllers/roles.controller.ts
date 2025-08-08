@@ -8,9 +8,12 @@ import {
   Param,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { BaseController } from '@/common/base/base.controller';
+import { JwtAuthGuard } from '../../../modules/autenticacion/guards/jwt-auth.guard';
+import { CasbinGuard } from '../guards/casbin.guard';
 import { RequestWithUser } from '@/common/interfaces/request.interface';
 import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 import { RolesService } from '../services/roles.service';
@@ -21,8 +24,9 @@ import {
   AsignarRolDto,
 } from '../dto/autorizacion.dto';
 
+@UseGuards(JwtAuthGuard, CasbinGuard)
 @ApiTags('Autorización - Roles')
-@Controller('api/v1/autorizacion/roles')
+@Controller('autorizacion/roles')
 export class RolesController extends BaseController {
   constructor(
     private readonly rolesService: RolesService,

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ConfiguracionService } from './services/configuracion.service';
 import { ValidacionService } from './services/validacion.service';
 import { SistemaController } from './controllers/sistema.controller';
+import { AutorizacionModule } from '../autorizacion';
 
 @Global()
 @Module({
@@ -13,6 +14,7 @@ import { SistemaController } from './controllers/sistema.controller';
       cache: true,
       expandVariables: true,
     }),
+    AutorizacionModule,
   ],
   providers: [ConfiguracionService, ValidacionService],
   controllers: [SistemaController],

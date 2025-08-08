@@ -1,12 +1,15 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { BaseController } from '@/common/base/base.controller';
 import { PoliticasService } from '../services/politicas.service';
 import { CasbinService } from '../services/casbin.service';
 import { CrearPoliticaDto } from '../dto/autorizacion.dto';
+import { CasbinGuard } from '../guards/casbin.guard';
+import { JwtAuthGuard } from '../../../modules/autenticacion/guards/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard, CasbinGuard)
 @ApiTags('Autorización - Políticas')
-@Controller('api/v1/autorizacion/politicas')
+@Controller('autorizacion/politicas')
 export class PoliticasController extends BaseController {
   constructor(
     private readonly politicasService: PoliticasService,

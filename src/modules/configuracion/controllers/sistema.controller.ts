@@ -7,9 +7,10 @@ import {
 } from '@nestjs/swagger';
 import { ConfiguracionService } from '../services/configuracion.service';
 import { ValidacionService } from '../services/validacion.service';
-import { ConfiguracionGuard } from '../guards/configuracion.guard';
 import { BusinessException } from '../../respuestas';
 import { format } from 'date-fns-tz';
+import { JwtAuthGuard } from '../../../modules/autenticacion/guards/jwt-auth.guard';
+import { CasbinGuard } from '../../../modules/autorizacion/guards/casbin.guard';
 
 @ApiTags('Sistema')
 @Controller('sistema')
@@ -24,38 +25,6 @@ export class SistemaController {
     summary: 'Verificar estado del sistema',
     description:
       'Endpoint público para verificar el estado general del sistema y sus servicios',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Estado del sistema',
-    schema: {
-      type: 'object',
-      properties: {
-        data: {
-          type: 'object',
-          properties: {
-            sistema: {
-              type: 'string',
-              enum: ['operativo', 'degradado', 'inoperativo'],
-            },
-            version: { type: 'string' },
-            ambiente: { type: 'string' },
-            timestamp: { type: 'string' },
-            servicios: {
-              type: 'object',
-              properties: {
-                baseDatos: {
-                  type: 'string',
-                  enum: ['conectado', 'desconectado'],
-                },
-                redis: { type: 'string', enum: ['conectado', 'desconectado'] },
-                email: { type: 'string', enum: ['operativo', 'inoperativo'] },
-              },
-            },
-          },
-        },
-      },
-    },
   })
   async verificarSalud() {
     const estado = await this.validacionService.verificarSaludSistema();
@@ -73,53 +42,12 @@ export class SistemaController {
   }
 
   @Get('configuracion')
-  @UseGuards(ConfiguracionGuard)
+  @UseGuards(JwtAuthGuard, CasbinGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Obtener configuración del sistema',
     description:
       'Obtiene la configuración no sensible del sistema. Requiere permisos de administrador.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Configuración no sensible del sistema',
-    schema: {
-      type: 'object',
-      properties: {
-        data: {
-          type: 'object',
-          properties: {
-            aplicacion: {
-              type: 'object',
-              properties: {
-                nombre: { type: 'string' },
-                version: { type: 'string' },
-                ambiente: { type: 'string' },
-              },
-            },
-            caracteristicas: {
-              type: 'object',
-              properties: {
-                email: { type: 'boolean' },
-                storage: { type: 'string', enum: ['local', 's3'] },
-                redis: { type: 'boolean' },
-              },
-            },
-            limites: {
-              type: 'object',
-              properties: {
-                rateLimitMax: { type: 'number' },
-                rateLimitWindow: { type: 'number' },
-              },
-            },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Acceso denegado - se requieren permisos de administrador',
   })
   obtenerConfiguracion() {
     // Retornar datos directamente - el interceptor agregará { data: ... }
@@ -127,33 +55,12 @@ export class SistemaController {
   }
 
   @Post('validar-configuracion')
-  @UseGuards(ConfiguracionGuard)
+  @UseGuards(JwtAuthGuard, CasbinGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Validar configuración actual',
     description:
       'Ejecuta una validación completa de la configuración del sistema. Requiere permisos de administrador.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Resultado de la validación',
-    schema: {
-      type: 'object',
-      properties: {
-        data: {
-          type: 'object',
-          properties: {
-            valida: { type: 'boolean' },
-            errores: { type: 'array', items: { type: 'string' } },
-            advertencias: { type: 'array', items: { type: 'string' } },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Acceso denegado - se requieren permisos de administrador',
   })
   validarConfiguracion() {
     const resultado = this.validacionService.validarConfiguracionCompleta();
@@ -171,33 +78,12 @@ export class SistemaController {
   }
 
   @Get('conectividad')
-  @UseGuards(ConfiguracionGuard)
+  @UseGuards(JwtAuthGuard, CasbinGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Verificar conectividad de servicios',
     description:
       'Verifica la conectividad con todos los servicios externos. Requiere permisos de administrador.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Estado de conectividad de servicios',
-    schema: {
-      type: 'object',
-      properties: {
-        data: {
-          type: 'object',
-          properties: {
-            baseDatos: { type: 'boolean' },
-            redis: { type: 'boolean' },
-            email: { type: 'boolean' },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Acceso denegado - se requieren permisos de administrador',
   })
   async verificarConectividad() {
     const conectividad = await this.validacionService.verificarConectividad();

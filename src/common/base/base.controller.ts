@@ -46,22 +46,4 @@ export abstract class BaseController {
       'Es necesario que esté autenticado para consumir este recurso.',
     );
   }
-
-  protected getRol(req: RequestWithUser): string {
-    if (req?.user?.roles && req.user.roles.length > 0) {
-      return req.user.roles[0]; // Primer rol como principal
-    }
-    throw new BadRequestException(
-      'Su cuenta no tiene permisos o roles configurados',
-    );
-  }
-
-  protected getRoles(req: RequestWithUser): string[] {
-    if (req?.user?.roles) {
-      return req.user.roles;
-    }
-    throw new BadRequestException(
-      'Su cuenta no tiene permisos o roles configurados',
-    );
-  }
 }

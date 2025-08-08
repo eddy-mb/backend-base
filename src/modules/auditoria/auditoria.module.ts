@@ -7,9 +7,14 @@ import { AuditoriaService } from './services/auditoria.service';
 import { AuditoriaController } from './controllers/auditoria.controller';
 import { AuditoriaInterceptor } from './interceptors/auditoria.interceptor';
 import { LoggingModule } from '../logging/logging.module';
+import { AutorizacionModule } from '../autorizacion/autorizacion.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([AuditoriaLog]), LoggingModule],
+  imports: [
+    TypeOrmModule.forFeature([AuditoriaLog]),
+    LoggingModule,
+    AutorizacionModule,
+  ],
 
   providers: [
     AuditoriaRepository,
