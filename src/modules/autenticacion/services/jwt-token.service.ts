@@ -21,12 +21,19 @@ export class JwtTokenService {
   ) {}
 
   /**
+   * Getter para acceso al JwtService
+   */
+  getJwtService(): JwtService {
+    return this.jwtService;
+  }
+
+  /**
    * Genera tokens JWT de acceso y renovación
    */
   generarTokens(
     userId: string,
     email: string,
-  ): { accessToken: string; refreshToken: string; expiresIn: number } {
+  ): { accessToken: string; refreshToken: string } {
     const config = this.configuracionService.seguridad;
 
     // Payload base
@@ -54,15 +61,12 @@ export class JwtTokenService {
       expiresIn: config.jwtRefreshExpiresIn,
     });
 
-    // Calcular tiempo de expiración en segundos
-    const expiresIn = this.parseExpirationTime(config.jwtExpiresIn);
-
     this.logger.log(
       `Tokens generados para usuario: ${userId}`,
       'JwtTokenService',
     );
 
-    return { accessToken, refreshToken, expiresIn };
+    return { accessToken, refreshToken };
   }
 
   /**
@@ -106,7 +110,6 @@ export class JwtTokenService {
    */
   async renovarAccessToken(refreshToken: string): Promise<{
     accessToken: string;
-    expiresIn: number;
   }> {
     // 1. Validar JWT estructura y firma
     const validation = await this.validarToken(refreshToken, 'refresh');
@@ -139,14 +142,12 @@ export class JwtTokenService {
       expiresIn: config.jwtExpiresIn,
     });
 
-    const expiresIn = this.parseExpirationTime(config.jwtExpiresIn);
-
     this.logger.log(
       `Token renovado para usuario: ${userId}`,
       'JwtTokenService',
     );
 
-    return { accessToken, expiresIn };
+    return { accessToken };
   }
 
   /**
@@ -237,25 +238,5 @@ export class JwtTokenService {
   private generateTokenHash(token: string): string {
     // Usar los últimos 20 caracteres del token como identificador único
     return token.slice(-20);
-  }
-
-  /**
-   * Convierte tiempo de expiración a segundos
-   */
-  private parseExpirationTime(timeString: string): number {
-    const timeMap: Record<string, number> = {
-      s: 1,
-      m: 60,
-      h: 3600,
-      d: 86400,
-    };
-
-    const match = timeString.match(/^(\d+)([smhd])$/);
-    if (!match) {
-      throw new Error(`Formato de tiempo inválido: ${timeString}`);
-    }
-
-    const [, value, unit] = match;
-    return parseInt(value) * timeMap[unit];
   }
 }

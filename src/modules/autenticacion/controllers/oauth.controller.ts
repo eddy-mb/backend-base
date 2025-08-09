@@ -8,6 +8,8 @@ import { OAuthService } from '../services/oauth.service';
 import { RequestInfo } from '../decorators/request-info.decorator';
 import { ConfiguracionService } from '../../configuracion/services/configuracion.service';
 import { GoogleProfile } from '../interfaces/auth.interface';
+import { AuthCookieHelper } from '../helpers/cookie.helper';
+import { JwtTokenService } from '../services/jwt-token.service';
 
 // Auditoría - usar el módulo existente
 import { Auditable } from '../../auditoria';
@@ -22,6 +24,7 @@ export class OAuthController extends BaseController {
   constructor(
     private readonly oauthService: OAuthService,
     private readonly configuracionService: ConfiguracionService,
+    private readonly jwtTokenService: JwtTokenService,
   ) {
     super();
   }
@@ -63,13 +66,13 @@ export class OAuthController extends BaseController {
       requestInfo.userAgent,
     );
 
-    const frontendUrl = this.configuracionService.aplicacion.frontendUrl;
-    const redirectUrl =
-      `${frontendUrl}/auth/callback?` +
-      `access_token=${authResponse.accessToken}&` +
-      `refresh_token=${authResponse.refreshToken}&` +
-      `expires_in=${authResponse.expiresIn}`;
+    AuthCookieHelper.setAuthCookies(
+      res,
+      authResponse,
+      this.jwtTokenService.getJwtService(),
+    );
 
-    return res.redirect(redirectUrl);
+    const frontendUrl = this.configuracionService.aplicacion.frontendUrl;
+    return res.redirect(`${frontendUrl}/dashboard`);
   }
 }

@@ -9,6 +9,8 @@ import { UsuariosService } from '../../usuarios/services/usuarios.service';
 import { JwtTokenService } from './jwt-token.service';
 import { TokenService } from './token.service';
 import { LoggerService } from '../../logging/services/logger.service';
+import { ConfiguracionService } from '../../configuracion/services/configuracion.service';
+import { TimeUtil } from '../utils/time.util';
 
 import {
   LoginDto,
@@ -26,6 +28,7 @@ import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { TipoToken } from '../enums/autenticacion.enum';
 import { PASSWORD_CONFIG } from '../../usuarios/constants/usuarios.constants';
 import { CrearUsuarioDto } from '@/modules/usuarios';
+import { TokenDuration } from '../enums/autenticacion.enum';
 
 /**
  * Servicio de Autenticación
@@ -40,6 +43,7 @@ export class AuthService {
     private readonly jwtTokenService: JwtTokenService,
     private readonly tokenService: TokenService,
     private readonly logger: LoggerService,
+    private readonly configuracionService: ConfiguracionService,
   ) {}
 
   async registrarUsuario(
@@ -65,11 +69,14 @@ export class AuthService {
 
     // Generar token de verificación
     const tokenVerificacion = this.tokenService.generateSecureToken(32);
+    const verificationExpiresIn = TimeUtil.parseExpirationTime(
+      TokenDuration.EMAIL_VERIFICATION,
+    );
     await this.tokenService.crearToken(
       usuario.id,
       TipoToken.VERIFICACION_EMAIL,
       tokenVerificacion,
-      24 * 60 * 60 * 1000, // 24 horas
+      verificationExpiresIn * 1000, // Convertir a milisegundos
       userAgent,
       ipRegistro,
     );
@@ -97,15 +104,20 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
-    const { accessToken, refreshToken, expiresIn } =
-      this.jwtTokenService.generarTokens(usuario.id, usuario.email);
+    const { accessToken, refreshToken } = this.jwtTokenService.generarTokens(
+      usuario.id,
+      usuario.email,
+    );
 
     // Guardar refresh token en base de datos con información del dispositivo
+    const refreshExpiresIn = TimeUtil.parseExpirationTime(
+      this.configuracionService.seguridad.jwtRefreshExpiresIn,
+    );
     await this.tokenService.crearToken(
       usuario.id,
       TipoToken.REFRESH,
       refreshToken,
-      7 * 24 * 60 * 60 * 1000, // 7 días
+      refreshExpiresIn * 1000, // Convertir a milisegundos
       requestInfo?.userAgent,
       requestInfo?.ip,
     );
@@ -118,8 +130,6 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      tokenType: 'Bearer' as const,
-      expiresIn,
       usuario: this.mapearUsuarioInfo(usuario),
     };
   }
@@ -158,8 +168,6 @@ export class AuthService {
 
   async renovarToken(datos: RenovarTokenDto): Promise<{
     accessToken: string;
-    tokenType: 'Bearer';
-    expiresIn: number;
   }> {
     this.logger.log('Renovando token', 'AuthService');
 
@@ -181,19 +189,16 @@ export class AuthService {
       throw new UnauthorizedException('Usuario no activo');
     }
 
-    const { accessToken, expiresIn } =
-      await this.jwtTokenService.renovarAccessToken(datos.refreshToken);
+    const accessToken = await this.jwtTokenService.renovarAccessToken(
+      datos.refreshToken,
+    );
 
     // Delegar a UsuariosService
     await this.usuariosService.actualizarUltimaActividad(tokenEntity.usuarioId);
 
     this.logger.log(`Token renovado: ${tokenEntity.usuarioId}`, 'AuthService');
 
-    return {
-      accessToken,
-      tokenType: 'Bearer' as const,
-      expiresIn,
-    };
+    return accessToken;
   }
 
   async logout(
@@ -264,11 +269,14 @@ export class AuthService {
 
     // Generar token de recuperación con información del dispositivo
     const token = this.tokenService.generateSecureToken(32);
+    const recoveryExpiresIn = TimeUtil.parseExpirationTime(
+      TokenDuration.PASSWORD_RECOVERY,
+    );
     await this.tokenService.crearToken(
       usuario.id,
       TipoToken.RECUPERACION_PASSWORD,
       token,
-      60 * 60 * 1000, // 1 hora
+      recoveryExpiresIn * 1000, // Convertir a milisegundos
       requestInfo?.userAgent,
       requestInfo?.ip,
     );
