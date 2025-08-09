@@ -5,6 +5,8 @@ import { PerfilUsuario } from './perfil-usuario.entity';
 import { LOGIN_CONFIG } from '../constants/usuarios.constants';
 import { EstadoUsuario } from '../enums/usuario.enum';
 import { TokenUsuario } from '../../autenticacion/entities/token-usuario.entity';
+import dotenv from 'dotenv';
+dotenv.config();
 
 /**
  * Entidad Usuario - Core del sistema de identidad y perfil
