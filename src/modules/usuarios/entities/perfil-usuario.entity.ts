@@ -56,6 +56,7 @@ export class PerfilUsuario {
   // ==================== INFORMACIÓN PERSONAL ====================
   @Column({
     name: 'apellidos',
+    type: 'varchar',
     length: 100,
     nullable: true,
     comment: 'Apellidos del usuario',
@@ -64,6 +65,7 @@ export class PerfilUsuario {
 
   @Column({
     name: 'telefono',
+    type: 'varchar',
     length: 20,
     nullable: true,
     comment: 'Número de teléfono del usuario',
@@ -118,6 +120,7 @@ export class PerfilUsuario {
   // ==================== LOCALIZACIÓN Y PREFERENCIAS ====================
   @Column({
     name: 'zona_horaria',
+    type: 'varchar',
     default: 'America/La_Paz',
     length: 50,
     comment: 'Zona horaria preferida del usuario',
@@ -126,6 +129,7 @@ export class PerfilUsuario {
 
   @Column({
     name: 'idioma',
+    type: 'varchar',
     default: 'es',
     length: 5,
     comment: 'Idioma preferido del usuario (código ISO)',
