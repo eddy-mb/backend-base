@@ -57,8 +57,10 @@ export class OAuthService {
       }
 
       // Generar tokens
-      const { accessToken, refreshToken, expiresIn } =
-        this.jwtTokenService.generarTokens(usuario.id, usuario.email);
+      const { accessToken, refreshToken } = this.jwtTokenService.generarTokens(
+        usuario.id,
+        usuario.email,
+      );
 
       await manager.update('usuarios', usuario.id, {
         refreshToken,
@@ -70,8 +72,6 @@ export class OAuthService {
       return {
         accessToken,
         refreshToken,
-        tokenType: 'Bearer' as const,
-        expiresIn,
         usuario: {
           id: usuario.id,
           email: usuario.email,

@@ -6,13 +6,11 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  Res,
+  UnauthorizedException,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { Response } from 'express';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 import { BaseController } from '../../../common/base/base.controller';
@@ -22,14 +20,12 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import {
   LoginDto,
   VerificarEmailDto,
-  RenovarTokenDto,
   RecuperarPasswordDto,
   ConfirmarPasswordDto,
 } from '../dto/auth-request.dto';
 import {
-  AuthResponseDto,
-  RenovarResponseDto,
   MessageResponseDto,
+  AuthCookieResponseDto,
 } from '../dto/auth-response.dto';
 
 import { RequestInfo } from '../decorators/request-info.decorator';
@@ -37,6 +33,8 @@ import { RequestWithUser } from '../../../common/interfaces/request.interface';
 import { Auditable, AuditableCritical } from '../../auditoria';
 import { CrearUsuarioDto } from '@/modules/usuarios';
 import { RequestInfoData } from '../interfaces/auth.interface';
+import { AuthCookieHelper } from '../helpers/cookie.helper';
+import { JwtTokenService } from '../services/jwt-token.service';
 
 /**
  * Controlador de Autenticación Principal
@@ -45,7 +43,10 @@ import { RequestInfoData } from '../interfaces/auth.interface';
 @ApiTags('Autenticación')
 @Controller('auth')
 export class AuthController extends BaseController {
-  constructor(private readonly authService: AuthService) {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly jwtTokenService: JwtTokenService,
+  ) {
     super();
   }
 
@@ -76,14 +77,21 @@ export class AuthController extends BaseController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Auditable({ tabla: 'usuarios', descripcion: 'Login con credenciales' })
   @ApiOperation({ summary: 'Iniciar sesión' })
-  @ApiResponse({ status: 200, type: AuthResponseDto })
+  @ApiResponse({ status: 200, type: AuthCookieResponseDto })
   async login(
     @Body() loginDto: LoginDto,
     @RequestInfo() requestInfo: RequestInfoData,
+    @Res({ passthrough: true }) res: Response,
   ) {
     const authResponse = await this.authService.login(loginDto, requestInfo);
 
-    return this.success(authResponse, 'Login exitoso');
+    AuthCookieHelper.setAuthCookies(
+      res,
+      authResponse,
+      this.jwtTokenService.getJwtService(),
+    );
+
+    return this.success(authResponse.usuario, 'Login exitoso');
   }
 
   @Post('verificar-email')
@@ -103,27 +111,49 @@ export class AuthController extends BaseController {
   @Post('renovar-token')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  // Sin @Auditable - operación muy frecuente (cada 15min por usuario activo)
   @ApiOperation({ summary: 'Renovar token de acceso' })
-  @ApiResponse({ status: 200, type: RenovarResponseDto })
-  async renovarToken(@Body() renovarTokenDto: RenovarTokenDto) {
-    const response = await this.authService.renovarToken(renovarTokenDto);
-    return this.success(response, 'Token renovado exitosamente');
+  @ApiResponse({ status: 200, type: AuthCookieResponseDto })
+  async renovarToken(
+    @Req() req: RequestWithUser,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = req.cookies?.refresh_token as string;
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token requerido');
+    }
+
+    const response = await this.authService.renovarToken({ refreshToken });
+
+    AuthCookieHelper.setAuthCookies(
+      res,
+      {
+        accessToken: response.accessToken,
+        refreshToken: refreshToken,
+      },
+      this.jwtTokenService.getJwtService(),
+    );
+
+    return this.success(null, 'Token renovado exitosamente');
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @Auditable({ tabla: 'usuarios', descripcion: 'Cierre de sesión' })
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Cerrar sesión' })
   @ApiResponse({ status: 200, type: MessageResponseDto })
-  async logout(@Req() req: RequestWithUser) {
+  async logout(
+    @Req() req: RequestWithUser,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const userId = this.getUser(req);
-    const authHeader = req.get('Authorization');
-    const accessToken = authHeader?.replace('Bearer ', '');
+    const accessToken = req.cookies?.access_token as string;
+    const refreshToken = req.cookies?.refresh_token as string;
 
-    await this.authService.logout(accessToken!, undefined, userId);
+    await this.authService.logout(accessToken, refreshToken, userId);
+
+    AuthCookieHelper.clearAuthCookies(res);
+
     return this.success(null, 'Sesión cerrada exitosamente');
   }
 
@@ -134,12 +164,17 @@ export class AuthController extends BaseController {
     tabla: 'usuarios',
     descripcion: 'Cierre de todas las sesiones',
   })
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Cerrar todas las sesiones' })
   @ApiResponse({ status: 200, type: MessageResponseDto })
-  async logoutAll(@Req() req: RequestWithUser) {
+  async logoutAll(
+    @Req() req: RequestWithUser,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const userId = this.getUser(req);
     await this.authService.logoutAll(userId);
+
+    AuthCookieHelper.clearAuthCookies(res);
+
     return this.success(null, 'Todas las sesiones han sido cerradas');
   }
 

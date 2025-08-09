@@ -14,29 +14,13 @@ export interface JwtPayload {
 }
 
 /**
- * Contexto de autenticación para requests
- */
-export interface AuthContext {
-  usuario: {
-    id: string;
-    email: string;
-    nombre: string;
-    roles?: string[];
-  };
-  token: string;
-  payload: JwtPayload;
-  ip?: string;
-  userAgent?: string;
-}
-
-/**
  * Respuesta de login/registro
  */
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
-  tokenType: 'Bearer';
-  expiresIn: number; // segundos
+  tokenType?: 'Bearer';
+  expiresIn?: number; // segundos
 }
 
 /**
