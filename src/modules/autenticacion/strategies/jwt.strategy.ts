@@ -48,11 +48,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       );
     }
 
-    // Retornar solo datos de usuario autenticado (sin roles)
+    // Retornar datos de usuario autenticado con roles desde JWT
     return {
       id: usuario.id,
       nombre: usuario.nombre,
       email: usuario.email,
+      roles: payload.roles,
+      rolActivo: payload.rolActivo,
     };
   }
 

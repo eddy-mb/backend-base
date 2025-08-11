@@ -8,6 +8,7 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  Patch,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -34,7 +35,6 @@ import { Auditable, AuditableCritical } from '../../auditoria';
 import { CrearUsuarioDto } from '@/modules/usuarios';
 import { RequestInfoData } from '../interfaces/auth.interface';
 import { AuthCookieHelper } from '../helpers/cookie.helper';
-import { JwtTokenService } from '../services/jwt-token.service';
 
 /**
  * Controlador de Autenticación Principal
@@ -43,10 +43,7 @@ import { JwtTokenService } from '../services/jwt-token.service';
 @ApiTags('Autenticación')
 @Controller('auth')
 export class AuthController extends BaseController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly jwtTokenService: JwtTokenService,
-  ) {
+  constructor(private readonly authService: AuthService) {
     super();
   }
 
@@ -88,7 +85,7 @@ export class AuthController extends BaseController {
     AuthCookieHelper.setAuthCookies(
       res,
       authResponse,
-      this.jwtTokenService.getJwtService(),
+      this.authService.getJwtService(),
     );
 
     return this.success(authResponse.usuario, 'Login exitoso');
@@ -130,7 +127,7 @@ export class AuthController extends BaseController {
         accessToken: response.accessToken,
         refreshToken: refreshToken,
       },
-      this.jwtTokenService.getJwtService(),
+      this.authService.getJwtService(),
     );
 
     return this.success(null, 'Token renovado exitosamente');
@@ -217,6 +214,39 @@ export class AuthController extends BaseController {
     return this.success(
       null,
       'Contraseña actualizada exitosamente. Todas las sesiones han sido cerradas.',
+    );
+  }
+
+  @Patch('cambiar-rol')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @Auditable({ tabla: 'usuarios', descripcion: 'Cambio de rol activo' })
+  @ApiOperation({ summary: 'Cambiar rol activo del usuario' })
+  @ApiResponse({ status: 200, type: AuthCookieResponseDto })
+  async cambiarRol(
+    @Body() rol: { nuevoRol: string },
+    @Req() req: RequestWithUser,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const user = req.user!;
+
+    // Delegar lógica completa al AuthService
+    const { accessToken, refreshToken } = await this.authService.cambiarRol(
+      user.id,
+      user.email,
+      user.roles || [],
+      rol.nuevoRol,
+    );
+
+    AuthCookieHelper.setAuthCookies(
+      res,
+      { accessToken, refreshToken },
+      this.authService.getJwtService(),
+    );
+
+    return this.success(
+      { rolActivo: rol.nuevoRol, roles: user.roles },
+      'Rol cambiado exitosamente',
     );
   }
 }

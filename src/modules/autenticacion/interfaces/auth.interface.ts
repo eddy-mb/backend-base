@@ -3,7 +3,7 @@
  */
 
 /**
- * Payload del JWT - estructura estándar
+ * Payload del JWT - estructura estándar con roles
  */
 export interface JwtPayload {
   sub: string; // userId (subject)
@@ -11,6 +11,8 @@ export interface JwtPayload {
   iat: number; // issued at
   exp: number; // expiration
   type: 'access' | 'refresh';
+  roles?: string[]; // Códigos de roles del usuario
+  rolActivo?: string; // Rol activo seleccionado
 }
 
 /**
@@ -33,6 +35,8 @@ export interface AuthUserInfo {
   estado: string;
   emailVerificado: boolean;
   ultimaActividad?: Date;
+  roles?: string[]; // Códigos de roles del usuario
+  rolActivo?: string; // Rol activo seleccionado
 }
 
 /**

@@ -10,6 +10,7 @@ import { RedisModule } from '../redis/redis.module';
 import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { AuditoriaModule } from '../auditoria/auditoria.module';
 import { LoggingModule } from '../logging/logging.module';
+import { AutorizacionModule } from '../autorizacion/autorizacion.module';
 
 // Entidades
 import { TokenUsuario } from './entities/token-usuario.entity';
@@ -42,6 +43,7 @@ import { ConfiguracionService } from '../configuracion/services/configuracion.se
     ConfiguracionModule,
     AuditoriaModule,
     LoggingModule,
+    AutorizacionModule,
 
     TypeOrmModule.forFeature([TokenUsuario]),
 

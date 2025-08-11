@@ -4,6 +4,7 @@ import { JwtTokenService } from './jwt-token.service';
 import { UsuariosService } from '../../usuarios/services/usuarios.service';
 import { LoggerService } from '../../logging/services/logger.service';
 import { GoogleProfile, AuthResponse } from '../interfaces/auth.interface';
+import { JwtService } from '@nestjs/jwt';
 
 /**
  * Servicio OAuth - Solo lógica de negocio limpia
@@ -16,6 +17,13 @@ export class OAuthService {
     private readonly jwtTokenService: JwtTokenService,
     private readonly logger: LoggerService,
   ) {}
+
+  /**
+   * Getter para acceso al JwtService desde el controller
+   */
+  getJwtService(): JwtService {
+    return this.jwtTokenService.jwtService;
+  }
 
   async loginConGoogle(
     googleProfile: GoogleProfile,
@@ -57,10 +65,8 @@ export class OAuthService {
       }
 
       // Generar tokens
-      const { accessToken, refreshToken } = this.jwtTokenService.generarTokens(
-        usuario.id,
-        usuario.email,
-      );
+      const { accessToken, refreshToken } =
+        await this.jwtTokenService.generarTokens(usuario.id, usuario.email);
 
       await manager.update('usuarios', usuario.id, {
         refreshToken,

@@ -9,6 +9,8 @@ import {
 } from 'typeorm';
 import { Usuario } from './usuario.entity';
 import { ConfiguracionUsuario } from '../interfaces/usuario.interface';
+import dotenv from 'dotenv';
+dotenv.config();
 
 /**
  * Entidad PerfilUsuario - Información personal extendida del usuario

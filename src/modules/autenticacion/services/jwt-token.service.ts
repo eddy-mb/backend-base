@@ -13,7 +13,7 @@ import {
 @Injectable()
 export class JwtTokenService {
   constructor(
-    private readonly jwtService: JwtService,
+    public readonly jwtService: JwtService,
     private readonly redisService: RedisService,
     private readonly configuracionService: ConfiguracionService,
     private readonly logger: LoggerService,
@@ -21,31 +21,28 @@ export class JwtTokenService {
   ) {}
 
   /**
-   * Getter para acceso al JwtService
-   */
-  getJwtService(): JwtService {
-    return this.jwtService;
-  }
-
-  /**
    * Genera tokens JWT de acceso y renovación
    */
-  generarTokens(
+  async generarTokens(
     userId: string,
     email: string,
-  ): { accessToken: string; refreshToken: string } {
+    roles?: string[],
+    rolActivo?: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const config = this.configuracionService.seguridad;
 
     // Payload base
     const basePayload = { sub: userId, email };
 
-    // Access Token (corta duración)
+    // Access Token (corta duración) con roles
     const accessPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
       ...basePayload,
       type: 'access',
+      roles,
+      rolActivo,
     };
 
-    const accessToken = this.jwtService.sign(accessPayload, {
+    const accessToken = await this.jwtService.signAsync(accessPayload, {
       secret: config.jwtSecret,
       expiresIn: config.jwtExpiresIn,
     });
@@ -56,7 +53,7 @@ export class JwtTokenService {
       type: 'refresh',
     };
 
-    const refreshToken = this.jwtService.sign(refreshPayload, {
+    const refreshToken = await this.jwtService.signAsync(refreshPayload, {
       secret: config.jwtRefreshSecret,
       expiresIn: config.jwtRefreshExpiresIn,
     });
@@ -87,7 +84,9 @@ export class JwtTokenService {
       const secret =
         type === 'access' ? config.jwtSecret : config.jwtRefreshSecret;
 
-      const payload = this.jwtService.verify<JwtPayload>(token, { secret });
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
+        secret,
+      });
 
       // Verificar tipo de token
       if (payload.type !== type) {
@@ -129,15 +128,17 @@ export class JwtTokenService {
 
     const { sub: userId, email } = validation.payload;
 
-    // Generar nuevo access token
+    // Generar nuevo access token (mantener roles originales)
     const config = this.configuracionService.seguridad;
     const accessPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
       sub: userId,
       email,
       type: 'access',
+      roles: validation.payload.roles,
+      rolActivo: validation.payload.rolActivo,
     };
 
-    const accessToken = this.jwtService.sign(accessPayload, {
+    const accessToken = await this.jwtService.signAsync(accessPayload, {
       secret: config.jwtSecret,
       expiresIn: config.jwtExpiresIn,
     });

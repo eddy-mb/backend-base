@@ -39,7 +39,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   // Prefijo global para APIs
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api');
 
   const port = process.env.PORT || 3001;
   await app.listen(port);

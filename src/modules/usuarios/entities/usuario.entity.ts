@@ -144,7 +144,7 @@ export class Usuario extends BaseEntity {
   @OneToMany(() => TokenUsuario, (token) => token.usuario)
   tokens?: TokenUsuario[];
 
-  // ==================== MÉTODOS DE NEGOCIO ====================
+  // ==================== MÉTODOS DE NEGOCIO ======================================
   /**
    * Verifica si el usuario puede iniciar sesión
    */

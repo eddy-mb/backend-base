@@ -10,6 +10,8 @@ import {
   AuditoriaMetadatos,
 } from '../interfaces/auditoria.interface';
 import { AUDITORIA_LIMITS } from '../constants/auditoria.constants';
+import dotenv from 'dotenv';
+dotenv.config();
 
 /**
  * Entidad para registrar logs de auditoría del sistema
