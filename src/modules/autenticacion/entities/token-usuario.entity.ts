@@ -10,12 +10,14 @@ import {
 import { Exclude } from 'class-transformer';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { TipoToken } from '../enums/autenticacion.enum';
+import dotenv from 'dotenv';
+dotenv.config();
 
 /**
  * Entidad TokenUsuario - Gestión de tokens de autenticación
  * No extiende BaseEntity por simplicidad y performance
  */
-@Entity({ name: 'tokens_usuario' })
+@Entity({ name: 'tokens_usuario', schema: process.env.DB_SCHEMA_USUARIOS })
 @Index(['usuarioId', 'tipo'], { where: 'revocado = false' })
 @Index(['fechaExpiracion'], { where: 'revocado = false' })
 export class TokenUsuario {

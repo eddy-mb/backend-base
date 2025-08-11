@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   BadRequestException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 
 import { UsuariosService } from '../../usuarios/services/usuarios.service';
@@ -10,6 +11,7 @@ import { JwtTokenService } from './jwt-token.service';
 import { TokenService } from './token.service';
 import { LoggerService } from '../../logging/services/logger.service';
 import { ConfiguracionService } from '../../configuracion/services/configuracion.service';
+import { RolesService } from '../../autorizacion/services/roles.service';
 import { TimeUtil } from '../utils/time.util';
 
 import {
@@ -44,7 +46,15 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly logger: LoggerService,
     private readonly configuracionService: ConfiguracionService,
+    private readonly rolesService: RolesService,
   ) {}
+
+  /**
+   * Getter para acceso al JwtService desde el controller
+   */
+  getJwtService(): JwtService {
+    return this.jwtTokenService.jwtService;
+  }
 
   async registrarUsuario(
     datos: CrearUsuarioDto,
@@ -104,10 +114,19 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
-    const { accessToken, refreshToken } = this.jwtTokenService.generarTokens(
+    // ⭐ CARGAR ROLES DEL USUARIO
+    const roles = await this.rolesService.obtenerCodigosRolesUsuario(
       usuario.id,
-      usuario.email,
     );
+    const rolActivo = this.seleccionarRolPrincipal(roles);
+
+    const { accessToken, refreshToken } =
+      await this.jwtTokenService.generarTokens(
+        usuario.id,
+        usuario.email,
+        roles,
+        rolActivo,
+      );
 
     // Guardar refresh token en base de datos con información del dispositivo
     const refreshExpiresIn = TimeUtil.parseExpirationTime(
@@ -130,7 +149,11 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      usuario: this.mapearUsuarioInfo(usuario),
+      usuario: {
+        ...this.mapearUsuarioInfo(usuario),
+        roles,
+        rolActivo,
+      },
     };
   }
 
@@ -362,5 +385,54 @@ export class AuthService {
       emailVerificado: usuario.emailVerificado,
       ultimaActividad: usuario.ultimaActividad,
     };
+  }
+
+  /**
+   * Selecciona el rol principal basado en prioridades
+   */
+  private seleccionarRolPrincipal(roles: string[]): string | undefined {
+    if (!roles || roles.length === 0) return undefined;
+
+    // Orden de prioridad para selección automática
+    const prioridades = ['ADMINISTRADOR', 'USUARIO', 'INVITADO'];
+
+    for (const prioridad of prioridades) {
+      if (roles.includes(prioridad)) {
+        return prioridad;
+      }
+    }
+
+    // Si no hay coincidencias con las prioridades, retornar el primer rol
+    return roles[0];
+  }
+
+  /**
+   * Cambiar rol activo del usuario
+   */
+  async cambiarRol(
+    usuarioId: string,
+    email: string,
+    rolesUsuario: string[],
+    nuevoRol: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    this.logger.log(`Cambiando rol para usuario: ${usuarioId}`, 'AuthService');
+
+    // Validar que el usuario tenga el rol solicitado
+    if (!rolesUsuario.includes(nuevoRol)) {
+      throw new UnauthorizedException('No tienes permisos para usar este rol');
+    }
+
+    // Generar nuevos tokens con el rol activo cambiado
+    const { accessToken, refreshToken } =
+      await this.jwtTokenService.generarTokens(
+        usuarioId,
+        email,
+        rolesUsuario,
+        nuevoRol,
+      );
+
+    this.logger.log(`Rol cambiado exitosamente: ${nuevoRol}`, 'AuthService');
+
+    return { accessToken, refreshToken };
   }
 }

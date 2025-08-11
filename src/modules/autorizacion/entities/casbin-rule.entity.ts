@@ -1,9 +1,11 @@
 import { Entity, Column, PrimaryGeneratedColumn, Index } from 'typeorm';
+import dotenv from 'dotenv';
+dotenv.config();
 
 /**
  * Entidad para persistir reglas de Casbin
  */
-@Entity({ name: 'casbin_rule', schema: process.env.DB_SCHEMA_AUTORIZACION })
+@Entity({ name: 'casbin_rule', schema: process.env.DB_SCHEMA_USUARIOS })
 @Index(['ptype'])
 @Index(['v0'])
 @Index(['v1'])

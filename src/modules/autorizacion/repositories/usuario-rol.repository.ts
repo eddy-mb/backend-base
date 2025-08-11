@@ -50,8 +50,8 @@ export class UsuarioRolRepository {
     const usuarioRoles: { codigo: string }[] = await this.repository
       .createQueryBuilder('ur')
       .innerJoin('ur.rol', 'rol')
-      .select('rol.codigo')
-      .where('ur.usuarioId = :usuarioId', { usuarioId })
+      .select('rol.codigo', 'codigo')
+      .where('ur.usuario_id = :usuarioId', { usuarioId })
       .andWhere('ur._is_active = true')
       .andWhere('rol._is_active = true')
       .andWhere('(ur.fecha_expiracion IS NULL OR ur.fecha_expiracion > NOW())')

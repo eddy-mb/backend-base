@@ -2,6 +2,8 @@ import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../database/entities/base.entity';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { Rol } from './rol.entity';
+import dotenv from 'dotenv';
+dotenv.config();
 
 /**
  * Entidad UsuarioRol - Relación many-to-many entre Usuario y Rol

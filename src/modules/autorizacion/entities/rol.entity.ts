@@ -1,6 +1,8 @@
 import { Entity, Column, OneToMany, Index } from 'typeorm';
 import { BaseEntity } from '../../database/entities/base.entity';
 import { UsuarioRol } from './usuario-rol.entity';
+import dotenv from 'dotenv';
+dotenv.config();
 
 /**
  * Entidad Rol - Define roles del sistema para autorización RBAC

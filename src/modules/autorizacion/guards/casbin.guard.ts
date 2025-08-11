@@ -1,59 +1,40 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { CasbinService } from '../services/casbin.service';
-import { RolesService } from '../services/roles.service';
 import { RequestWithUser } from '@/common/interfaces/request.interface';
+import { Request } from 'express';
 
 @Injectable()
 export class CasbinGuard implements CanActivate {
-  constructor(
-    private readonly casbinService: CasbinService,
-    private readonly rolesService: RolesService,
-  ) {}
+  constructor(private readonly casbinService: CasbinService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithUser>();
 
+    // Verificar que el usuario esté autenticado
     if (!request.user?.id) {
       return false;
     }
 
-    // Obtener roles del usuario desde el servicio
-    const roles = await this.rolesService.obtenerCodigosRolesUsuario(
-      request.user.id,
-    );
+    // Usar rol activo seleccionado por el usuario (más seguro)
+    const rolActivo = request.user.rolActivo;
 
-    if (!roles || roles.length === 0) {
+    if (!rolActivo) {
       return false;
     }
 
-    const { recurso, accion } = this.extraerRecursoYAccion(context);
+    const { recurso, accion } = this.extraerRecursoAccion(context);
 
-    for (const rol of roles) {
-      if (await this.casbinService.enforce(rol, recurso, accion)) {
-        return true;
-      }
-    }
-
-    return false;
+    // Verificar permisos solo con el rol activo
+    return await this.casbinService.enforce(rolActivo, recurso, accion);
   }
 
-  private extraerRecursoYAccion(context: ExecutionContext): {
+  private extraerRecursoAccion(context: ExecutionContext): {
     recurso: string;
     accion: string;
   } {
     const request: Request = context.switchToHttp().getRequest();
-    const method = request.method;
-    const recurso = request.url;
-
-    const accionMap: Record<string, string> = {
-      GET: 'GET',
-      POST: 'POST',
-      PUT: 'PUT',
-      PATCH: 'PATCH',
-      DELETE: 'DELETE',
-    };
-
-    const accion = accionMap[method] || 'GET';
+    const accion = request.method;
+    const recurso = request.originalUrl.split('?')[0];
 
     return { recurso, accion };
   }
